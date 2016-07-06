@@ -4,17 +4,17 @@ mesos combinators
 ideas
 =====
 scheduler {
-	List(s1,s2) <- scheduler {
-			a = scheduler {
+	List(s1,s2) <- seq {
+			a = seq(for {
 				status <- cmd("exit 1")
 				assert(status == 1)
 				List(s1,s2) <- cmd("exit 1") || cmd("exit 2")
 				assert(s1 == 1 && s2 == 2)
-			}
-			b = scheduler {
+			})
+			b = seq(for {
 				s4 <- cmd("exit 4")
 				assert(s4 == 4)
-		  }
+		  })
 			a || b
 		}
 } . run
@@ -38,7 +38,7 @@ scheduler {
 		def || (a: Exec[T], ls: Exec[List[T]]): Exec[List[T]]
 
 		//sequential builder
-		def scheduler(builder:Exec[Exec[T]]):Exec[T] = flatMap
+		def seq(builder:Exec[Exec[T]]):Exec[T] = flatMap
 	}
 	
 	//executor for the 'system' call
