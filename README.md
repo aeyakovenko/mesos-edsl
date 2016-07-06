@@ -20,7 +20,7 @@ scheduler {
 } . run
 
 * cmd is a executor for the "system" call to the shell
-
+```scala
 	//TODO: unboxed tagged type
 	class StatusCode(value: Int) extends AnyVal
 
@@ -43,5 +43,5 @@ scheduler {
 	
 	//executor for the 'system' call
 	def cmd(cmd: String):Exec[StatusCode]
-	
+```	
 
