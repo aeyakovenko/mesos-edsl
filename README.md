@@ -1,8 +1,13 @@
 mesos combinators
 =================
 
+wrap the scheduler/executor classes into combinators that can be composed 
+
 ideas
 =====
+
+scheduling tasks
+----------------
 
 ```scala
 
@@ -10,7 +15,7 @@ ideas
 for {
 	List(s1,s2) <- for {
 			a:Scheduler[StatusCode] = for {
-				status <- cmd("exit 1")
+				status <- task(cmd("exit 1"))
 				assert(status == 1)
 				List(s1,s2) <- cmd("exit 1") || cmd("exit 2")
 				assert(s1 == 1 && s2 == 2)
@@ -29,7 +34,7 @@ for {
 //monad for the scheduler/driver
 class Scheduler[T:<Task] extends Monad[Scheduler[T]] {
   //one task
-	case class One[T](task: T)
+	case class Task[T](task: T)
 
   //many tasks to be launched at once
 	case class Parallel(tasks: List[Scheduler[T]])
@@ -40,30 +45,45 @@ class Scheduler[T:<Task] extends Monad[Scheduler[T]] {
 	//runs the monad, tells mesos to start executing tasks
   //returns a Try with the result
 	def run():Try[T]
+}
 
+object Scheduler {
 	//parallel builder, launch the tasks in parallel 
 	def <||> (a: Scheduler[T], b: Scheduler[T]): Scheduler[T]
+  def task(task:T): Scheduler[T]
 
 	//sequential builder
 	def flatMap(builder:Scheduler[Scheduler[T]]):Scheduler[T]
+
+  def cpu(cores:Int):Scheduler[Resource[T]]
+  def memory(bytes:Int):Scheduler[Resource[T]]
+  def when(seconds:Int):Scheduler[Resource[T]]
 }
 
 //todo: is there a newtype/unboxxed tagged type?
-class StatysCode(value: Int) extends AnyVal
+class StatusCode(value: Int) extends AnyVal
 
 //one task
-class Task {
-  def execute():StatusCode
+class Task[R] {
+  def execute():R
 }
 
-//constraints
-cpu <&&> memory <|> cpu
-
-class System(cmd:String) extends Task {
+class Command(cmd:String) extends Task {
   //implements the system call to cmd, sends the result back as a framework message
 }
+object Command {
+  def cmd(cmd: String):Scheduler[System] = Command(cmd)
+}
+```
 
-//executor for the 'system' call
-def cmd(cmd: String):Scheduler[System] = One(System(cmd))
-```	
+filtering for resource constraints
+----------------------------------
+```scala
+val a:Scheduler[Command] for (
+  res <- (cpu(2) <&&> memory(100) <&&> when(10)) <|> (cpu(1) <&&> memory(50))
+  res.task(cmd("exit 5"))
+  task(cmd("exit 6"))
+)
+```
 
+* cpu memory and when combinators allow the user to wait for a specific resource until its available then execute it
