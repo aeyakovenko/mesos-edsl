@@ -34,13 +34,13 @@ for {
 //monad for the scheduler/driver
 class Scheduler[T:<Task] extends Monad[Scheduler[T]] {
   //one task
-	case class Task[T](task: T)
+	case class Task[T](task: T, rs: List[Resource] = Nil)
 
   //many tasks to be launched at once
 	case class Parallel(tasks: List[Scheduler[T]])
 
   //a sequence of tasks
-	case class Seq(tasks: List[Scheduler[T]])
+	case class Sequence(tasks: List[Scheduler[T]])
 
 	//runs the monad, tells mesos to start executing tasks
   //returns a Try with the result
@@ -79,11 +79,9 @@ object Command {
 filtering for resource constraints
 ----------------------------------
 ```scala
-val a:Scheduler[Command] for (
-  res <- (cpu(2) <&&> memory(100) <&&> when(10)) <|> (cpu(1) <&&> memory(50))
-  res.task(cmd("exit 5"))
-  task(cmd("exit 6"))
-)
+val a:Scheduler[Command] = for {
+  (cpu(2) <&&> memory(100) <&&> when(10)) <|> (cpu(1) <&&> memory(50)) withResource cmd("exit 5")
+}
 ```
 
 * cpu memory and when combinators allow the user to wait for a specific resource until its available then execute it
