@@ -5,42 +5,39 @@ import cats.{Monad}
 import org.apache.mesos.Protos.{TaskStatus}
 import scala.util.{Try}
 
-class Scheduler[T]                                                extends Monad[Scheduler] {
-  case class Single(task:T)                                       extends Scheduler[T]
-  case class Sequence(tls:List[Scheduler[T]])                     extends Scheduler[T]
-  case class Parallel(tls:List[Scheduler[T]])                     extends Scheduler[T]
-  case class Resources(task:Scheduler[T], rls:List[Resource[T]])  extends Scheduler[T]
+sealed abstract class Scheduler[T]                                           extends Monad[Scheduler] {
+  final case class Single[T]   (task:  Option[T],          rs:List[Resource])      extends Scheduler[T]
+  final case class Sequence[T] (tasks: List[Scheduler[T]])                         extends Scheduler[T]
+  final case class Parallel[T] (tasks: List[Scheduler[T]])                         extends Scheduler[T]
+
+  //applicative
+  def pure[A](x: A): Scheduler[A] = Single(Some(x), Nil)
+
+  //monad
+  def flatMap[A, B](fa: Scheduler[A])(f: A => Scheduler[B]): Scheduler[B] = {
+    fa match {
+      case Single(Some(x), xrs) => f(x) match {
+        case Single(Some(y), yrs) => Single(Some(y), xrs ++ yrs)
+        case Single(None,_) => Single(None,Nil)
+        case a => a
+      }
+      case Single(None, rs) => Single(None, rs)
+      case Sequence(ts) => Sequence(for(v <- ts) yield(flatMap(v)(f)))
+      case Parallel(ts) => Parallel(for(v <- ts) yield(flatMap(v)(f)))
+      case _ => error("wtf pattern matcher")
+    }
+  }
 
   def schedule(): Try[Seq[TaskStatus]] = error("unimplemented")
-  def pure[A](x: A): Scheduler[A] = error("unimplemented")
-  def flatMap[A, B](fa: Scheduler[A])(f: A => Scheduler[B]): Scheduler[B] = error("unimplemented")
 }
 
-class Resource[T]                         extends Monad[Resource] {
-  case class Cpu(cpu: Double)             extends Resource[T]
-  case class Memory(mem: Double)          extends Resource[T]
-  case class When(secs: Int)              extends Resource[T]
-  case class Many(rls:List[Resource[T]])  extends Resource[T]
-
-  def withResource(sched: Scheduler[T]): Scheduler[T] = error("unimplemented")
-
-  def pure[A](x: A): Resource[A] = error("unimplemented")
-  def flatMap[A, B](fa: Resource[A])(f: A => Resource[B]): Resource[B] = error("unimplemented")
-
+sealed abstract class Resource {
+  final case class Cpu(cpu: Double)             extends Resource
+  final case class Memory(mem: Double)          extends Resource
+  final case class When(secs: Int)              extends Resource
 }
 
-class Task {
-  def execute(): Unit = error("unimplemented")
+abstract class Task {
+  def execute(): Unit
 }
-
-//object Scheduler {
-//	//parallel builder, launch the tasks in parallel 
-//	def <||> (a: Scheduler[T], b: Scheduler[T]): Scheduler[T]
-//  def task(task:T): Scheduler[T]
-//
-//	//sequential builder
-//	def flatMap(builder:Scheduler[Scheduler[T]]):Scheduler[T]
-//
-//}
-
 
