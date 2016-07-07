@@ -85,3 +85,8 @@ val a:Scheduler[Command] = for {
 ```
 
 * cpu memory and when combinators allow the user to wait for a specific resource until its available then execute it
+
+sources
+-------
+* git clone https://github.com/larioj/SleepFramework
+* wget http://www.apache.org/dist/mesos/0.28.2/mesos-0.28.2.tar.gz
