@@ -1,9 +1,11 @@
-package mesosedsl
+package org.apache.mesos.edsl
 
+import org.apache.mesos.edsl.{data => D}
 import cats.{Monad}
 import org.apache.{mesos => M}
 import org.apache.mesos.Protos.{TaskStatus}
 import scala.util.{Try}
+type EventParser a = E.ExceptT a (S.StateT (channel,driver) IO) a
 
 sealed abstract class Scheduler[T]                                           extends Monad[Scheduler] {
   //applicative
