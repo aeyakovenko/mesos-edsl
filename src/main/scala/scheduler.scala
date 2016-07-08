@@ -7,34 +7,34 @@ import scala.collection.{JavaConverters => J}
 import scala.concurrent.{Channel}
 
 class Scheduler(executor: M.ExecutorInfo, channel: Channel[D.SchedulerEvents]) extends M.Scheduler {
-  override def resourceOffers(driver: SchedulerDriver, offers: util.List[Offer]): Unit =
+  override def resourceOffers(driver: M.SchedulerDriver, offers: J.util.List[Offer]): Unit =
     channel.write(D.ResourceOffers(offers))
 
-  override def offerRescinded(driver: SchedulerDriver, offerId: OfferID): Unit =
+  override def offerRescinded(driver: M.SchedulerDriver, offerId: P.OfferID): Unit =
     channel.write(D.OfferRescinded(offerId))
 
-  override def disconnected(driver: SchedulerDriver): Unit =
+  override def disconnected(driver: M.SchedulerDriver): Unit =
     channel.write(D.Disconnected())
 
-  override def reregistered(driver: SchedulerDriver, masterInfo: MasterInfo): Unit =
+  override def reregistered(driver: M.SchedulerDriver, masterInfo: P.MasterInfo): Unit =
     channel.write(D.Reregistered(masterInfo))
 
-  override def slaveLost(driver: SchedulerDriver, slaveId: SlaveID): Unit =
+  override def slaveLost(driver: M.SchedulerDriver, slaveId: P.SlaveID): Unit =
     channel.write(D.SlaveLost(slaveId))
 
-  override def error(driver: SchedulerDriver, message: String): Unit =
+  override def error(driver: M.SchedulerDriver, message: String): Unit =
     channel.write(D.Error(message))
 
-  override def statusUpdate(driver: SchedulerDriver, status: TaskStatus): Unit =
+  override def statusUpdate(driver: M.SchedulerDriver, status: P.TaskStatus): Unit =
     channel.write(D.StatusUpdate(status))
 
-  override def frameworkMessage(driver: SchedulerDriver, executorId: ExecutorID, slaveId: SlaveID, data: Array[Byte]): Unit =
+  override def frameworkMessage(driver: M.SchedulerDriver, executorId: P.ExecutorID, slaveId: P.SlaveID, data: Array[Byte]): Unit =
     channel.write(D.FrameworkMessage(executorId, slaveId, data))
 
-  override def registered(driver: SchedulerDriver, frameworkId: FrameworkID, masterInfo: MasterInfo): Unit =
+  override def registered(driver: M.SchedulerDriver, frameworkId: P.FrameworkID, masterInfo: P.MasterInfo): Unit =
     channel.write(D.Registered(frameworkId, masterInfo))
 
-  override def executorLost(driver: SchedulerDriver, executorId: ExecutorID, slaveId: SlaveID, status: Int): Unit =
+  override def executorLost(driver: M.SchedulerDriver, executorId: P.ExecutorID, slaveId: P.SlaveID, status: Int): Unit =
     channel.write(D.ExecutorLost(executorId, slaveId, status)
 
 }
