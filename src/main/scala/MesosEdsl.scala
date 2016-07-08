@@ -1,8 +1,7 @@
 package mesosedsl
 
 import cats.{Monad}
-//import org.apache.mesos.*;
-
+import org.apache.{mesos => M}
 import org.apache.mesos.Protos.{TaskStatus}
 import scala.util.{Try}
 
@@ -25,7 +24,10 @@ sealed abstract class Scheduler[T]                                           ext
   }
 
   def schedule(): Try[Seq[TaskStatus]] = {
+    class MesosScheduler(executor: M.ExecutorInfo) extends M.Scheduler {
+    }
     self match {
+      Single
     }
   }
 }
