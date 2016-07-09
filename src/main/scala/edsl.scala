@@ -1,51 +1,50 @@
 package org.apache.mesos.edsl
 
 import org.apache.mesos.edsl.{data => D}
-import cats.{Monad}
+import cats.{Monad,<|>,Left,Right}
 import org.apache.{mesos => M}
+
 import org.apache.mesos.Protos.{TaskStatus}
 import scala.util.{Try}
-type EventParser a = E.ExceptT a (S.StateT (channel,driver) IO) a
+import scala.concurrent.{Channel}
+import import cats.state.{StateT, get, put}
 
-sealed abstract class Scheduler[T]                                           extends Monad[Scheduler] {
-  //applicative
-  def pure[A](x: A): Scheduler[A] = Single(Some(x), Nil)
+case class State(ch:Channel[D.SchedulerEvents], q:Queue[D.SchedulerEvents], cache:List[D.SchedulerEvents], dr:M.MesosChedulerDriver)
 
-  //monad
-  def flatMap[A, B](fa: Scheduler[A])(f: A => Scheduler[B]): Scheduler[B] = {
-    fa match {
-      case Single(Some(x), xrs) => f(x) match {
-        case Single(Some(y), yrs) => Single(Some(y), xrs ++ yrs)
-        case Single(None,_) => Single(None,Nil)
-        case a => a
-      }
-      case Single(None, rs) => Single(None, rs)
-      case Sequence(ts) => Sequence(for(v <- ts) yield(flatMap(v)(f)))
-      case Parallel(ts) => Parallel(for(v <- ts) yield(flatMap(v)(f)))
-    }
+type SchedulerMonad[A] = StateT[({type l[X] = Try[X]})#l, (Channel,M.MesosSchedulerDriver), A]
+
+def pop[D.SchedulerEvent]: SchedulerMonad[D.SchedulerEvent]  = for {
+  State(ch,q,cache,dr) <- get
+  (ev,nc,nq) <- for { 
+                  (ev,nq) <- q.dequeue 
+                } yield(ev,nc,nq) <|> for {
+                  ev <- ch.recieve
+                  nc = ev :: cache
+                } yield(ev,nc,q)
+  put(State(ch,nq,nc,dr))
+} yield(ev)
+
+//for launching tasks in parallel, peek the offers, then try each task parallel 
+def peek[D.SchedulerEvent]: SchedulerMonad[D.SchedulerEvent]  = for {
+  State(ch,q,cache,dr) <- get
+  (nq,nc) <- if(q.isEmpty) for(ev <- ch.recieve) yield(q.enqueue(ev), ev::cache)
+             else pure(q,cache)
+  ev = nq.head
+  put(State(ch,nq,cache,dr))
+} yield(ev)
+
+def par[A](a: SchedulerMonad[A], b: SchedulerMonad[A]): (SchedulerMonad[A],SchedulerMonad[A]) = for {
+  State(ch,q,ca,dr) <- get
+  put(State(ch,Queue(ch.reverse),Nil,dr))
+  res1 <- for {
+    rv <- a 
+  } yield(Right) <|> for {
+    State(_,fq,fca,_) <- get
+    put(State(ch,Queue((fca ++ ca).reverse), Nil, dr))
+    rv <- b
+  } yield(Right(rv))
+  rv <- res1 match {
+    Left(r) => for (res2 <- b) yield(r,res2)
+    Right(r) => for(res2 <- a) yield(res2,r)
   }
-
-  def schedule(): Try[Seq[TaskStatus]] = {
-    class MesosScheduler(executor: M.ExecutorInfo) extends M.Scheduler {
-    }
-    self match {
-      Single
-    }
-  }
-}
-
-final case class Single[T]   (task:  Option[T],          rs:List[Resource])      extends Scheduler[T]
-final case class Sequence[T] (tasks: List[Scheduler[T]])                         extends Scheduler[T]
-final case class Parallel[T] (tasks: List[Scheduler[T]])                         extends Scheduler[T]
-
-
-sealed abstract class Resource
-
-final case class Cpu(cpu: Double)             extends Resource
-final case class Memory(mem: Double)          extends Resource
-final case class When(secs: Int)              extends Resource
-
-abstract class Task {
-  def execute(): Unit
-}
-
+} yield(rv)
