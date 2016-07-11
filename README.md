@@ -86,6 +86,11 @@ val a:Scheduler[Command] = for {
 
 * cpu memory and when combinators allow the user to wait for a specific resource until its available then execute it
 
+kind project plugin
+--------------------
+removes the type lambdas and replaces them with a '?'
+* addCompilerPlugin("org.spire-math" %% "kind-projector" % "0.8.0")
+
 sources
 -------
 * git clone https://github.com/larioj/SleepFramework
