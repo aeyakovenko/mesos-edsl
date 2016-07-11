@@ -1,17 +1,25 @@
 package org.apache.mesos.edsl
 
 import org.apache.mesos.edsl.{data => D}
-import cats.{Monad,<|>,Left,Right}
+import cats.{Monad,<|>,State}
+import cats.data.XorT
 import org.apache.{mesos => M}
 
 import org.apache.mesos.Protos.{TaskStatus}
 import scala.util.{Try}
 import scala.concurrent.{Channel}
-import import cats.state.{StateT, get, put}
+import import cats.state.{State, get, put}
 
-case class State(ch:Channel[D.SchedulerEvents], q:Queue[D.SchedulerEvents], cache:List[D.SchedulerEvents], dr:M.MesosChedulerDriver)
 
-type SchedulerMonad[A] = StateT[({type l[X] = Try[X]})#l, (Channel,M.MesosSchedulerDriver), A]
+object ParserM {
+  type ParserM[S, A] = XorT[({type l[X] = StateT[Trampoline, S, X]})#l, String, A]
+  //type ParserM[S, A] = XorT[StateT[Trampoline, S, ?], String, A]
+	//def get[S]: ParserM[S, S] = Xor.right[String,S](State.get[S])
+	def bail[S,A](msg: String): ParserM[S, A] = XorT.left[({type l[X] = StateT[Trampoline, S, X]})#l, String, A](msg)
+}
+case class StateData(ch:Channel[D.SchedulerEvents], q:Queue[D.SchedulerEvents], cache:List[D.SchedulerEvents], dr:M.MesosChedulerDriver)
+
+type SchedulerMonad[A] = XortT[State[StateData], String, A]
 
 def pop[D.SchedulerEvent]: SchedulerMonad[D.SchedulerEvent]  = for {
   State(ch,q,cache,dr) <- get
