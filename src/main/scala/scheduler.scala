@@ -3,12 +3,12 @@ package org.apache.mesos.edsl.scheduler
 import org.apache.mesos.edsl.{data => D}
 import org.apache.{mesos => M}
 import org.apache.mesos.{Protos => P}
-import scala.collection.{JavaConverters => J}
+//import scala.collection.{JavaConverters => J}
 import scala.concurrent.{Channel}
 
-class Scheduler(executor: M.ExecutorInfo, channel: Channel[D.SchedulerEvents]) extends M.Scheduler {
-  override def resourceOffers(driver: M.SchedulerDriver, offers: J.util.List[Offer]): Unit =
-    channel.write(D.ResourceOffers(offers))
+class Scheduler(executor: P.ExecutorInfo, channel: Channel[D.SchedulerEvents]) extends M.Scheduler {
+  override def resourceOffers(driver: M.SchedulerDriver, offers: java.util.List[P.Offer]): Unit =
+    channel.write(D.ResourceOffer(offers))
 
   override def offerRescinded(driver: M.SchedulerDriver, offerId: P.OfferID): Unit =
     channel.write(D.OfferRescinded(offerId))
@@ -35,6 +35,6 @@ class Scheduler(executor: M.ExecutorInfo, channel: Channel[D.SchedulerEvents]) e
     channel.write(D.Registered(frameworkId, masterInfo))
 
   override def executorLost(driver: M.SchedulerDriver, executorId: P.ExecutorID, slaveId: P.SlaveID, status: Int): Unit =
-    channel.write(D.ExecutorLost(executorId, slaveId, status)
+    channel.write(D.ExecutorLost(executorId, slaveId, status))
 
 }
