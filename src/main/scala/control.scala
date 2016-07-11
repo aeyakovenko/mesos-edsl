@@ -2,7 +2,6 @@ package org.apache.mesos.edsl.control
 
 import cats.{Applicative,Functor}
 import cats.data.{XorT,StateT}
-import cats.free.{Trampoline}
 
 package object Control {
   // trans lift tests, https://github.com/typelevel/cats/blob/master/tests/src/test/scala/cats/tests/TransLiftTests.scala

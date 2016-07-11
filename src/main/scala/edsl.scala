@@ -10,6 +10,7 @@ import cats.free.{Trampoline}
 package object Edsl {
   type SchedulerM[A] = C.ErrorTStateT[Trampoline, D.SchedulerState, A]
 	def bail[A](msg:String):SchedulerM[A] = C.bail(msg)
+	def state[A](f: (D.SchedulerState) => (D.SchedulerState,A)):SchedulerM[A] = C.state(f)
 }
 
 //case class StateData(ch:Channel[D.SchedulerEvents], q:Queue[D.SchedulerEvents], cache:List[D.SchedulerEvents], dr:M.MesosChedulerDriver)
