@@ -3,6 +3,7 @@ package org.apache.mesos.edsl.data
 import org.apache.{mesos => M}
 import org.apache.mesos.{Protos => P}
 import scala.collection.JavaConverters._ //implicits
+import scala.concurrent.{Channel}
 
 sealed abstract class SchedulerEvents
 final case class ResourceOffer(offers: java.util.List[P.Offer]) extends SchedulerEvents
@@ -31,4 +32,4 @@ final case class Cpu(cpu: Double)             extends Resource
 final case class Memory(mem: Double)          extends Resource
 final case class When(secs: Int)              extends Resource
 
-final case class SchedulerState(driver: M.SchedulerDriver)
+final case class SchedulerState(driver: M.SchedulerDriver, channel: Channel[SchedulerEvents])

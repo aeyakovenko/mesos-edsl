@@ -1,7 +1,6 @@
 package org.apache.mesos.edsl
 
 //import org.apache.{mesos => M}
-//import scala.concurrent.{Channel}
 import org.apache.mesos.edsl.{data => D}
 import org.apache.mesos.edsl.{control => C}
 import cats.free.{Trampoline}
