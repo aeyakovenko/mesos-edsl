@@ -5,12 +5,15 @@ package org.apache.mesos.edsl
 import org.apache.mesos.edsl.{data => D}
 import org.apache.mesos.edsl.{control => C}
 import cats.free.{Trampoline}
-import cats.implicits._ //for comonad
+import cats.implicits.function0Instance //Comonad[Function0]
 
 package object monad {
   type SchedulerM[A] = C.ErrorTStateT[Trampoline, D.SchedulerState, A]
   def bail[A](msg:String):SchedulerM[A] = C.bail(msg)
   def state[A](f: D.SchedulerState => (D.SchedulerState,A)):SchedulerM[A] = C.state(f)
+  def get:SchedulerM[D.SchedulerState] = state({ s => (s,s)})
+  def put(s:D.SchedulerState):SchedulerM[_] = state({ _ => (s,())})
+
 	//todo: how do i make this a function of the SchedulerM[A] object
 	def run[A](script:SchedulerM[A], start: D.SchedulerState): Either[String, A] = script.toEither.run(start).run._2
 }
