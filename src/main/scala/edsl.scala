@@ -4,13 +4,15 @@ package org.apache.mesos.edsl
 //import scala.concurrent.{Channel}
 import org.apache.mesos.edsl.{data => D}
 import org.apache.mesos.edsl.{control => C}
-
-import cats.{Id}
+import cats.free.{Trampoline}
+import cats.implicits._ //for comonad
 
 package object monad {
-  type SchedulerM[A] = C.ErrorTStateT[Id, D.SchedulerState, A]
+  type SchedulerM[A] = C.ErrorTStateT[Trampoline, D.SchedulerState, A]
   def bail[A](msg:String):SchedulerM[A] = C.bail(msg)
   def state[A](f: D.SchedulerState => (D.SchedulerState,A)):SchedulerM[A] = C.state(f)
+	//todo: how do i make this a function of the SchedulerM[A] object
+	def run[A](script:SchedulerM[A], start: D.SchedulerState): Either[String, A] = script.toEither.run(start).run._2
 }
 
 //case class StateData(ch:Channel[D.SchedulerEvents], q:Queue[D.SchedulerEvents], cache:List[D.SchedulerEvents], dr:M.MesosChedulerDriver)

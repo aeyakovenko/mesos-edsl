@@ -3,10 +3,11 @@ import org.scalacheck.Properties
 import org.scalacheck.Prop.forAll
 import scala.util.{Try,Success,Failure}
 import org.apache.mesos.edsl.{control => C}
-import cats.{Id}
+import cats.free.{Trampoline}
+import cats.implicits._ //for comonad
 
 object test extends Properties("edsl") {
-  type TestM[A] = C.ErrorTStateT[Id, Int, A]
+  type TestM[A] = C.ErrorTStateT[Trampoline, Int, A]
   def bail[A](msg:String):TestM[A] = C.bail(msg)
   def state[A](f: Int => (Int,A)):TestM[A] = C.state(f)
   def get:TestM[Int] = state({ s => (s,s)})
@@ -19,6 +20,6 @@ object test extends Properties("edsl") {
     } yield(v)
 
   property("control.run") = forAll { (a: Int) =>
-    inc.toEither.run(1) == (2,Right(1))
+		inc.toEither.run(1).run == (2,Right(1))
   }
 }
