@@ -3,7 +3,6 @@ package org.apache.mesos.edsl.scheduler
 import org.apache.mesos.edsl.{data => D}
 import org.apache.{mesos => M}
 import org.apache.mesos.{Protos => P}
-//import scala.collection.{JavaConverters => J}
 import scala.concurrent.{Channel}
 
 class Scheduler(executor: P.ExecutorInfo, channel: Channel[D.SchedulerEvents]) extends M.Scheduler {

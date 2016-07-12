@@ -19,7 +19,19 @@ object test extends Properties("edsl") {
       _ <- put(v + 1)
     } yield(v)
 
+	def run[A](script:TestM[A], start: Int): (Int,Either[String, A]) = script.toEither.run(start).run
+
   property("control.run") = forAll { (a: Int) =>
-		inc.toEither.run(1).run == (2,Right(1))
+		run(inc, a) == (a + 1,Right(a))
   }
+
+  def failure: TestM[Int] =
+    for {
+      v <- inc
+			_ <- bail[Int]("foobar")
+    } yield(v)
+
+  property("control.bail") = forAll { (a: Int) =>
+		run(failure, a) == (a + 1 ,Left("foobar"))
+	}
 }

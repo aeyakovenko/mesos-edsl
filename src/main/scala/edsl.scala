@@ -15,6 +15,11 @@ package object monad {
 
 	//todo: how do i make this a function of the SchedulerM[A] object
 	def run[A](script:SchedulerM[A], start: D.SchedulerState): Either[String, A] = script.toEither.run(start).run._2
+
+	def nextEvent:SchedulerM[D.SchedulerEvents] = for {
+		state <- get
+		event = state.channel.read
+	} yield(event)
 }
 
 //case class StateData(ch:Channel[D.SchedulerEvents], q:Queue[D.SchedulerEvents], cache:List[D.SchedulerEvents], dr:M.MesosChedulerDriver)
