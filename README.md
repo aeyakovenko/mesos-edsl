@@ -91,6 +91,11 @@ kind project plugin
 removes the type lambdas and replaces them with a '?'
 * addCompilerPlugin("org.spire-math" %% "kind-projector" % "0.8.0")
 
+trans lift test
+----------------
+
+* addCompilerPlugin("org.spire-math" %% "kind-projector" % "0.8.0")
+
 sources
 -------
 * git clone https://github.com/larioj/SleepFramework

@@ -1,9 +1,9 @@
-package org.apache.mesos.edsl.control
+package org.apache.mesos.edsl
 
 import cats.{Applicative,Functor}
 import cats.data.{XorT,StateT}
 
-package object Control {
+package object control {
   // trans lift tests, https://github.com/typelevel/cats/blob/master/tests/src/test/scala/cats/tests/TransLiftTests.scala
   // addCompilerPlugin("org.spire-math" %% "kind-projector" % "0.8.0")
   // removes the type lambdas and adds ?
@@ -26,3 +26,5 @@ package object Control {
 		XorT.right[({type l[X] = StateT[F, S, X]})#l,String,A](StateT.apply[F, S, A]({ s => I1.pure(f(s)) }))
 
 }
+
+

@@ -3,14 +3,29 @@ package org.apache.mesos.edsl
 //import org.apache.{mesos => M}
 //import scala.concurrent.{Channel}
 import org.apache.mesos.edsl.{data => D}
-import org.apache.mesos.edsl.control.{Control => C}
+import org.apache.mesos.edsl.{control => C}
 
 import cats.free.{Trampoline}
 
-package object Edsl {
+package object monad {
   type SchedulerM[A] = C.ErrorTStateT[Trampoline, D.SchedulerState, A]
 	def bail[A](msg:String):SchedulerM[A] = C.bail(msg)
-	def state[A](f: (D.SchedulerState) => (D.SchedulerState,A)):SchedulerM[A] = C.state(f)
+	def state[A](f: D.SchedulerState => (D.SchedulerState,A)):SchedulerM[A] = C.state(f)
+}
+
+package object test {
+  type TestM[A] = C.ErrorTStateT[Trampoline, Int, A]
+	def bail[A](msg:String):TestM[A] = C.bail(msg)
+	def state[A](f: Int => (Int,A)):TestM[A] = C.state(f)
+	def get:TestM[Int] = state({ s => (s,s)})
+	def put(v:Int):TestM[Unit] = state({ _ => (v,())})
+
+  def inc: TestM[Int] =
+    for {
+      v <- get
+      _ <- put(v + 1)
+    } yield(v)
+
 }
 
 //case class StateData(ch:Channel[D.SchedulerEvents], q:Queue[D.SchedulerEvents], cache:List[D.SchedulerEvents], dr:M.MesosChedulerDriver)
