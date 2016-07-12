@@ -17,8 +17,9 @@ package object monad {
   def get:SchedulerM[D.SchedulerState] = state({ s => (s,s)})
   def put(s:D.SchedulerState):SchedulerM[_] = state({ _ => (s,())})
 
-  //todo: how do i make this a function of the SchedulerM[A] object
-  def run[A](script:SchedulerM[A], start: D.SchedulerState): Either[String, A] = script.toEither.run(start).run._2
+	implicit class SchedulerMRun[A](val v: SchedulerM[A]) extends AnyVal {
+		def run(start: D.SchedulerState): Either[String,A] = v.toEither.run(start).run._2
+	}
 
 	//todo: generalize this
 	implicit class SchedulerMFilter[A](val xort: SchedulerM[A]) extends AnyVal {
