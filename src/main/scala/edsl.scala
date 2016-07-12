@@ -5,27 +5,12 @@ package org.apache.mesos.edsl
 import org.apache.mesos.edsl.{data => D}
 import org.apache.mesos.edsl.{control => C}
 
-import cats.free.{Trampoline}
+import cats.{Id}
 
 package object monad {
-  type SchedulerM[A] = C.ErrorTStateT[Trampoline, D.SchedulerState, A]
-	def bail[A](msg:String):SchedulerM[A] = C.bail(msg)
-	def state[A](f: D.SchedulerState => (D.SchedulerState,A)):SchedulerM[A] = C.state(f)
-}
-
-package object test {
-  type TestM[A] = C.ErrorTStateT[Trampoline, Int, A]
-	def bail[A](msg:String):TestM[A] = C.bail(msg)
-	def state[A](f: Int => (Int,A)):TestM[A] = C.state(f)
-	def get:TestM[Int] = state({ s => (s,s)})
-	def put(v:Int):TestM[Unit] = state({ _ => (v,())})
-
-  def inc: TestM[Int] =
-    for {
-      v <- get
-      _ <- put(v + 1)
-    } yield(v)
-
+  type SchedulerM[A] = C.ErrorTStateT[Id, D.SchedulerState, A]
+  def bail[A](msg:String):SchedulerM[A] = C.bail(msg)
+  def state[A](f: D.SchedulerState => (D.SchedulerState,A)):SchedulerM[A] = C.state(f)
 }
 
 //case class StateData(ch:Channel[D.SchedulerEvents], q:Queue[D.SchedulerEvents], cache:List[D.SchedulerEvents], dr:M.MesosChedulerDriver)
