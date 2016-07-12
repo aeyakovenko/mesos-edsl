@@ -5,21 +5,35 @@ import org.apache.mesos.edsl.{data => D}
 import org.apache.mesos.edsl.{control => C}
 import cats.free.{Trampoline}
 import cats.implicits.function0Instance //Comonad[Function0]
+import cats.implicits._
+import cats.data._
+import cats._
 
 package object monad {
   type SchedulerM[A] = C.ErrorTStateT[Trampoline, D.SchedulerState, A]
   def bail[A](msg:String):SchedulerM[A] = C.bail(msg)
+  def pure[A](a:A):SchedulerM[A] = C.pure(a)
   def state[A](f: D.SchedulerState => (D.SchedulerState,A)):SchedulerM[A] = C.state(f)
   def get:SchedulerM[D.SchedulerState] = state({ s => (s,s)})
   def put(s:D.SchedulerState):SchedulerM[_] = state({ _ => (s,())})
 
-	//todo: how do i make this a function of the SchedulerM[A] object
-	def run[A](script:SchedulerM[A], start: D.SchedulerState): Either[String, A] = script.toEither.run(start).run._2
+  //todo: how do i make this a function of the SchedulerM[A] object
+  def run[A](script:SchedulerM[A], start: D.SchedulerState): Either[String, A] = script.toEither.run(start).run._2
 
-	def nextEvent:SchedulerM[D.SchedulerEvents] = for {
-		state <- get
-		event = state.channel.read
-	} yield(event)
+	//todo: generalize this
+	implicit class SchedulerMFilter[A](val xort: SchedulerM[A]) extends AnyVal {
+		def filter(f: A => Boolean): SchedulerM[A] = xort.flatMap(a => if (f(a)) pure(a) else bail("filter failed"))
+	}
+
+  def nextEvent:SchedulerM[D.SchedulerEvents] = for {
+    state <- get
+    event = state.channel.read
+  } yield(event)
+
+  def registered:SchedulerM[_] = for {
+    D.Registered(_,_) <- nextEvent
+  } yield(())
+
 }
 
 //case class StateData(ch:Channel[D.SchedulerEvents], q:Queue[D.SchedulerEvents], cache:List[D.SchedulerEvents], dr:M.MesosChedulerDriver)
