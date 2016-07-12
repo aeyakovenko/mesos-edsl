@@ -5,6 +5,9 @@ import scala.util.{Try,Success,Failure}
 import org.apache.mesos.edsl.{control => C}
 import cats.free.{Trampoline}
 import cats.implicits.function0Instance //Comonad[Function0]
+import cats._
+import cats.implicits._
+import cats.{Alternative}
 
 object test extends Properties("edsl") {
   type TestM[A] = C.ErrorTStateT[Trampoline, Int, A]
@@ -34,4 +37,14 @@ object test extends Properties("edsl") {
   property("control.bail") = forAll { (a: Int) =>
 		run(failure, a) == (a + 1 ,Left("foobar"))
 	}
+
+  def choice: TestM[Int] =
+    for {
+      v <- failure orElse inc
+    } yield(v)
+
+  property("control.choice") = forAll { (a: Int) =>
+		run(choice, a) == (a + 2 ,Right(a + 1))
+	}
+
 }
