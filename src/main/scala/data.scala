@@ -7,7 +7,7 @@ import scala.concurrent.{Channel}
 
 sealed abstract class SchedulerEvents
 final case class ResourceOffer(offers: java.util.List[P.Offer]) extends SchedulerEvents
-final case class OfferRescinded(offer: P.OfferID) extends SchedulerEvents
+final case class OfferRescinded(id: P.OfferID) extends SchedulerEvents
 final case class Disconnected() extends SchedulerEvents
 final case class Reregistered(masterInfo: P.MasterInfo) extends SchedulerEvents
 final case class SlaveLost(slaveID: P.SlaveID) extends SchedulerEvents
@@ -32,4 +32,4 @@ final case class Cpu(cpu: Double)             extends Resource
 final case class Memory(mem: Double)          extends Resource
 final case class When(secs: Int)              extends Resource
 
-final case class SchedulerState(driver: M.SchedulerDriver, channel: Channel[SchedulerEvents])
+final case class SchedulerState(driver: M.SchedulerDriver, channel: Channel[SchedulerEvents], offers:List[P.Offer])

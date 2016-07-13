@@ -1,12 +1,8 @@
-import org.scalacheck._
 import org.scalacheck.Properties
 import org.scalacheck.Prop.forAll
-import scala.util.{Try,Success,Failure}
 import org.apache.mesos.edsl.{control => C}
 import cats.free.{Trampoline}
 import cats.implicits.function0Instance //Comonad[Function0]
-import cats._
-import cats.data._
 
 object test extends Properties("edsl") {
   type TestM[A] = C.ErrorTStateT[Trampoline, Int, A]
@@ -59,12 +55,10 @@ object test extends Properties("edsl") {
 			5 <- get
 		} yield(true)
 
-	property("filter") = forAll { (a: Boolean) =>
+	property("filter fail") = forAll { (a: Boolean) =>
 		five.run(4) == (4,Left("filter failed"))
 	}
-	property("filter") = forAll { (a: Boolean) =>
+	property("filter pass") = forAll { (a: Boolean) =>
 		five.run(5) == (5,Right(true))
 	}
-
-
 }
