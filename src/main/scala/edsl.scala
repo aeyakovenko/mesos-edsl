@@ -23,8 +23,11 @@ package object monad {
 
 	//todo: generalize this
 	implicit class SchedulerMFilter[A](val xort: SchedulerM[A]) extends AnyVal {
-		def filter(f: A => Boolean): SchedulerM[A] = xort.flatMap(a => if (f(a)) pure(a) else bail("filter failed"))
+		def filter(f: A => Boolean): SchedulerM[A] = xort.flatMap(a => if (f(a)) pure(a) else bail("SchedulerM[A] failed"))
 	}
+	//implicit class SchedulerMTaskStatusFilter(val xort: SchedulerM[P.TaskStatus]) extends AnyVal {
+	//	def filter(f: P.TaskStatus => Boolean): SchedulerM[P.TaskStatus] = xort.flatMap(a => if (f(a)) pure(a) else bail("SchedulerM[P.TaskStatus].filter failed"))
+  //}
 
   def nextEvent:SchedulerM[D.SchedulerEvents] = for {
     state <- get
@@ -33,6 +36,10 @@ package object monad {
 
   def registered:SchedulerM[_] = for {
     D.Registered(_,_) <- nextEvent
+  } yield(())
+
+  def disconnected:SchedulerM[_] = for {
+    D.Disconnected() <- nextEvent
   } yield(())
 
   def addOffers:SchedulerM[_] = for {
@@ -62,51 +69,40 @@ package object monad {
 		})
 	}
 
-	def launch(t:P.TaskInfo):SchedulerM[_] = for {
+	def launch(t:P.TaskInfo):SchedulerM[P.TaskInfo] = for {
 		state <- get
 		offer :: _ <- pure( t.satisfy(state.offers) )
 		task = t.toBuilder.setSlaveId(offer.getSlaveId).build()
     _ <- pure( state.driver.launchTasks(List(offer.getId), List(task)) )
+	} yield(task)
+
+	def taskStatus(t: P.TaskInfo):SchedulerM[P.TaskStatus] = for {
+		D.StatusUpdate(status) <- nextEvent
+		if status.getTaskId == t.getTaskId
+	} yield(status)
+
+	def stop():SchedulerM[_] = for {
+		state <- get
+		_ <- pure ( state.driver.stop() )
 	} yield(())
 
-}
+	def shutdown():SchedulerM[_] = for {
+    _ <- stop()
+    _ <- disconnected
+  } yield(())
 
-//case class StateData(ch:Channel[D.SchedulerEvents], q:Queue[D.SchedulerEvents], cache:List[D.SchedulerEvents], dr:M.MesosChedulerDriver)
-//
-//type SchedulerMonad[A] = XortT[State[StateData], String, A]
-//
-//def pop[D.SchedulerEvent]: SchedulerMonad[D.SchedulerEvent]  = for {
-//  State(ch,q,cache,dr) <- get
-//  (ev,nc,nq) <- for { 
-//                  (ev,nq) <- q.dequeue 
-//                } yield(ev,nc,nq) <|> for {
-//                  ev <- ch.recieve
-//                  nc = ev :: cache
-//                } yield(ev,nc,q)
-//  put(State(ch,nq,nc,dr))
-//} yield(ev)
-//
-////for launching tasks in parallel, peek the offers, then try each task parallel 
-//def peek[D.SchedulerEvent]: SchedulerMonad[D.SchedulerEvent]  = for {
-//  State(ch,q,cache,dr) <- get
-//  (nq,nc) <- if(q.isEmpty) for(ev <- ch.recieve) yield(q.enqueue(ev), ev::cache)
-//             else pure(q,cache)
-//  ev = nq.head
-//  put(State(ch,nq,cache,dr))
-//} yield(ev)
-//
-//def par[A](a: SchedulerMonad[A], b: SchedulerMonad[A]): (SchedulerMonad[A],SchedulerMonad[A]) = for {
-//  State(ch,q,ca,dr) <- get
-//  put(State(ch,Queue(ch.reverse),Nil,dr))
-//  res1 <- for {
-//    rv <- a 
-//  } yield(Right) <|> for {
-//    State(_,fq,fca,_) <- get
-//    put(State(ch,Queue((fca ++ ca).reverse), Nil, dr))
-//    rv <- b
-//  } yield(Right(rv))
-//  rv <- res1 match {
-//    Left(r) => for (res2 <- b) yield(r,res2)
-//    Right(r) => for(res2 <- a) yield(res2,r)
-//  }
-//} yield(rv)
+  def recvTaskMsg(t:P.TaskInfo):SchedulerM[Array[Byte]] = for {
+    D.FrameworkMessage(eid, sid, data) <- nextEvent
+    if(eid == t.getExecutor.getExecutorId && sid == t.getSlaveId)
+  } yield(data)
+
+  def sendTaskMsg(t:P.TaskInfo, data:Array[Byte]):SchedulerM[_] = for {
+    state <- get
+    _ <- pure( state.driver.sendFrameworkMessage(t.getExecutor.getExecutorId, t.getSlaveId, data) )
+  } yield(())
+
+  def isRunning(t:P.TaskInfo):SchedulerM[_] = for {
+    s <- taskStatus(t)
+    if s.getState == P.TaskState.TASK_RUNNING 
+  } yield(())
+}
