@@ -49,7 +49,7 @@ package object monad {
 
 	implicit class TaskInfoOfferSatisfy(val t: P.TaskInfo) extends AnyVal {
 		def satisfy(offers:List[P.Offer]): List[P.Offer] = offers.filter({ o => 
-			def satisfyResource(r:P.Resource):Boolean = o.getResourcesList().filter({ x => 
+			def satisfyResource(r:P.Resource):Boolean = { o.getResourcesList().map({ x => 
 					x match {
 						case x if x.getName != r.getName => false
 						case x if x.getType != r.getType => false
@@ -57,17 +57,18 @@ package object monad {
 						case _ => true
 					}
 				}).foldLeft(false)(_ || _)
+		  }
 			t.getResourcesList().map(satisfyResource).foldLeft(true)(_ && _)
 		})
 	}
 
-//	def launch(t:P.TaskInfo):SchedulerM[_] = for {
-//		state <- get
-//		offer :: _ <- pure( state.offers.filter({ o => o.getCpu >= t.cpu && o.getMem >= t.mem }) ) 
-//		_ <- pure( t.setSlaveId(offer.getSlaveId) ) 
-//    _ <- pure( state.driver.launchTasks(List(offer.getId).asJava, List(t).asJava) )
-//	} yield(())
-//
+	def launch(t:P.TaskInfo):SchedulerM[_] = for {
+		state <- get
+		offer :: _ <- pure( t.satisfy(state.offers) )
+		_ <- pure( t.setSlaveId(offer.getSlaveId) ) 
+    _ <- pure( state.driver.launchTasks(List(offer.getId).asJava, List(t).asJava) )
+	} yield(())
+
 }
 
 //case class StateData(ch:Channel[D.SchedulerEvents], q:Queue[D.SchedulerEvents], cache:List[D.SchedulerEvents], dr:M.MesosChedulerDriver)
