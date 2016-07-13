@@ -48,8 +48,8 @@ package object monad {
 	} yield(())
 
 	implicit class TaskInfoOfferSatisfy(val t: P.TaskInfo) extends AnyVal {
-		def satisfy(offers:List[P.Offer]): List[P.Offer] = offers.filter({ o => 
-			def satisfyResource(r:P.Resource):Boolean = { o.getResourcesList().map({ x => 
+		def satisfy(offers:List[P.Offer]): List[P.Offer] = offers.filter({ o =>
+			def satisfyResource(r:P.Resource):Boolean = { o.getResourcesList().map({ x =>
 					x match {
 						case x if x.getName != r.getName => false
 						case x if x.getType != r.getType => false
@@ -65,8 +65,8 @@ package object monad {
 	def launch(t:P.TaskInfo):SchedulerM[_] = for {
 		state <- get
 		offer :: _ <- pure( t.satisfy(state.offers) )
-		_ <- pure( t.setSlaveId(offer.getSlaveId) ) 
-    _ <- pure( state.driver.launchTasks(List(offer.getId).asJava, List(t).asJava) )
+		task = t.toBuilder.setSlaveId(offer.getSlaveId).build()
+    _ <- pure( state.driver.launchTasks(List(offer.getId), List(task)) )
 	} yield(())
 
 }
