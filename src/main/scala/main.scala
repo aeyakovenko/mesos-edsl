@@ -90,7 +90,7 @@ object SchedulerMTest {
     } yield(s)
 
     println("starting")
-    val s = script.run(D.SchedulerState(driver, channel, List()))
+    val s = script.run(D.SchedulerState(driver, channel, List(), None))
     println(s)
     sys.exit(0)
   }

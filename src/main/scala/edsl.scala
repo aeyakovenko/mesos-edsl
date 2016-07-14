@@ -26,27 +26,42 @@ package object monad {
 		def filter(f: A => Boolean): SchedulerM[A] = xort.flatMap(a => if (f(a)) pure(a) else bail(s"SchedulerM[A] filter failed at $a"))
 	}
 
-  def nextEvent:SchedulerM[D.SchedulerEvents] = for {
+  def readEvent:SchedulerM[Option[D.SchedulerEvents]] = for {
     state <- get
     event <- pure ( state.channel.read )
+		_ <- put(state.copy(lookahead = Some(event)) )
+  } yield(Some(event))
+
+  def nextEvent:SchedulerM[D.SchedulerEvents] = for {
+    state <- get
+    Some(event) <- pure(state.lookahead) orElse readEvent
   } yield(event)
+
+  def consumeEvent:SchedulerM[Unit] = for {
+    state <- get
+		_ <- put(state.copy(lookahead = None))
+  } yield(())
 
   def registered:SchedulerM[Unit] = for {
     D.Registered(_,_) <- nextEvent
+    _ <- consumeEvent
   } yield(())
 
   def disconnected:SchedulerM[Unit] = for {
     D.Disconnected() <- nextEvent
+    _ <- consumeEvent
   } yield(())
 
   def addOffers:SchedulerM[Unit] = for {
     D.ResourceOffer(offers) <- nextEvent
+    _ <- consumeEvent
 		state <- get
 		_ <- put(state.copy(offers = state.offers ++ offers))
 	} yield(())
 
   def removeOffers:SchedulerM[Unit] = for {
     D.OfferRescinded(id) <- nextEvent
+    _ <- consumeEvent
 		state <- get
 		_ <- put(state.copy(offers = state.offers.filter({ o => o.getId != id })))
 	} yield(())
@@ -78,6 +93,7 @@ package object monad {
 	def taskStatus(t: P.TaskInfo):SchedulerM[P.TaskStatus] = for {
 		D.StatusUpdate(status) <- nextEvent
 		if status.getTaskId == t.getTaskId
+    _ <- consumeEvent
 	} yield(status)
 
 	def stop():SchedulerM[_] = for {
@@ -93,6 +109,7 @@ package object monad {
   def recvTaskMsg(t:P.TaskInfo):SchedulerM[Array[Byte]] = for {
     D.FrameworkMessage(eid, sid, data) <- nextEvent
     if(eid == t.getExecutor.getExecutorId && sid == t.getSlaveId)
+    _ <- consumeEvent
   } yield(data)
 
   def sendTaskMsg(t:P.TaskInfo, data:Array[Byte]):SchedulerM[_] = for {

@@ -32,4 +32,4 @@ final case class Cpu(cpu: Double)             extends Resource
 final case class Memory(mem: Double)          extends Resource
 final case class When(secs: Int)              extends Resource
 
-final case class SchedulerState(driver: M.SchedulerDriver, channel: Channel[SchedulerEvents], offers:List[P.Offer])
+final case class SchedulerState(driver: M.SchedulerDriver, channel: Channel[SchedulerEvents], offers:List[P.Offer], lookahead:Option[SchedulerEvents])
