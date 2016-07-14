@@ -2,7 +2,7 @@ package org.apache.mesos.executor
 
 import org.apache.{mesos => M}
 import org.apache.mesos.{Protos => P}
-import sys.process._ //for !
+import sys.process._ //for !!
 
 /**
   * Created by mesosphere on 6/30/16.
