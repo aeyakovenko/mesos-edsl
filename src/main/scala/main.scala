@@ -11,9 +11,6 @@ import scala.concurrent.Future
 import scala.concurrent.ExecutionContext.Implicits.global
 
 
-/**
-  * Created by Jesus E. Larios Murillo on 6/24/16.
-  */
 object SchedulerMTest {
 
   def main(args: Array[String]): Unit = {
