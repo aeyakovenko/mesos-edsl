@@ -25,9 +25,6 @@ package object monad {
 	implicit class SchedulerMFilter[A](val xort: SchedulerM[A]) extends AnyVal {
 		def filter(f: A => Boolean): SchedulerM[A] = xort.flatMap(a => if (f(a)) pure(a) else bail("SchedulerM[A] failed"))
 	}
-	//implicit class SchedulerMTaskStatusFilter(val xort: SchedulerM[P.TaskStatus]) extends AnyVal {
-	//	def filter(f: P.TaskStatus => Boolean): SchedulerM[P.TaskStatus] = xort.flatMap(a => if (f(a)) pure(a) else bail("SchedulerM[P.TaskStatus].filter failed"))
-  //}
 
   def nextEvent:SchedulerM[D.SchedulerEvents] = for {
     state <- get
@@ -105,4 +102,12 @@ package object monad {
     s <- taskStatus(t)
     if s.getState == P.TaskState.TASK_RUNNING 
   } yield(())
+
+
+  def command(s:P.TaskInfo):SchedulerM[String] = for {
+    t <- launch(s)
+    _ <- isRunning(t)
+    r <- recvTaskMsg(t) 
+  } yield(new String(r))
+
 }

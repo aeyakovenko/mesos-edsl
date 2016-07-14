@@ -51,7 +51,7 @@ object SchedulerMTest {
 
     val driver = new M.MesosSchedulerDriver(scheduler, framework, mesosMaster)
 
-    def newTask(cpu:Double, mem:Double):P.TaskInfo = {
+    def newTask(cpu:Double, mem:Double, cmd:String):P.TaskInfo = {
         val id = P.TaskID.newBuilder.setValue("SchedulerMTask" + System.currentTimeMillis())
         val name = id.getValue
         val cpuR = P.Resource.newBuilder.setName("cpus").setType(P.Value.Type.SCALAR).setScalar(P.Value.Scalar.newBuilder.setValue(cpu))
@@ -60,24 +60,17 @@ object SchedulerMTest {
           .setExecutor(executor)
           .setName(name)
           .setTaskId(id)
+          .setData(com.google.protobuf.ByteString.copyFrom(cmd.getBytes))
           .addResources(cpuR)
           .addResources(memR)
           .build()
       }
 
-
-    def command(cpu:Double, mem:Double, c:String):E.SchedulerM[String] = for {
-      t <- E.launch(newTask(cpu,mem))
-      _ <- E.isRunning(t)
-      _ <- E.sendTaskMsg(t,c.getBytes)
-      r <- E.recvTaskMsg(t) 
-    } yield(new String(r))
-
     Future {
       driver.run()
     }
     val script:E.SchedulerM[String] = for {
-      s <- command(10, 2048, "uname -a") orElse command(1, 128, "uname -a")
+      s <- E.command(newTask(10, 2048, "uname -a")) orElse command(newTask(1, 128, "uname -a"))
       _ <- E.shutdown
     } yield(s)
 
