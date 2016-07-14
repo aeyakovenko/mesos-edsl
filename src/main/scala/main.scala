@@ -4,7 +4,7 @@ import org.apache.mesos.edsl.{data => D}
 import org.apache.mesos.{Protos => P}
 import org.apache.{mesos => M}
 import org.apache.mesos.edsl.{monad => E}
-import org.apache.mesos.edsl.monad._
+import org.apache.mesos.edsl.monad.{SchedulerMRun}
 import scala.concurrent.{Channel}
 
 import scala.concurrent.Future
@@ -24,10 +24,10 @@ object SchedulerMTest {
     val id = P.FrameworkID.newBuilder.setValue(name).build()
 
     val executorCommand = P.CommandInfo.newBuilder
-      .setValue("/opt/mesosphere/bin/java -cp /opt/mesosphere/bin/SleepFramework-assembly-1.0.jar SchedulerMExecutor")
+      .setValue("/opt/mesosphere/bin/java -cp /opt/mesosphere/bin/mesos-edsl-assembly-1.0.jar CommandExecutor")
       .build()
-    val executorId = P.ExecutorID.newBuilder.setValue("SchedulerMExecutor-" + System.currentTimeMillis())
-    val executorName = "SchedulerM Executor"
+    val executorId = P.ExecutorID.newBuilder.setValue("CommandExecutor-" + System.currentTimeMillis())
+    val executorName = "CommandExecutor Executor"
     val source = "java"
 
 
@@ -69,8 +69,15 @@ object SchedulerMTest {
     Future {
       driver.run()
     }
+
+    def command(s:P.TaskInfo):E.SchedulerM[String] = for {
+      t <- E.launch(s)
+      _ <- E.isRunning(t)
+      r <- E.recvTaskMsg(t) 
+    } yield(new String(r))
+
     val script:E.SchedulerM[String] = for {
-      s <- E.command(newTask(10, 2048, "uname -a")) orElse command(newTask(1, 128, "uname -a"))
+      s <- command(newTask(10, 2048, "echo 1; uname -a")) orElse command(newTask(1, 128, "echo 2; uname -a"))
       _ <- E.shutdown
     } yield(s)
 
