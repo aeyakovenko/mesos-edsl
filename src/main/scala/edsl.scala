@@ -15,7 +15,7 @@ package object monad {
   def pure[A](a:A):SchedulerM[A] = C.pure(a)
   def state[A](f: D.SchedulerState => (D.SchedulerState,A)):SchedulerM[A] = C.state(f)
   def get:SchedulerM[D.SchedulerState] = state({ s => (s,s)})
-  def put(s:D.SchedulerState):SchedulerM[_] = state({ _ => (s,())})
+  def put(s:D.SchedulerState):SchedulerM[Unit] = state({ _ => (s,())})
 
 	implicit class SchedulerMRun[A](val v: SchedulerM[A]) extends AnyVal {
 		def run(start: D.SchedulerState): Either[String,A] = v.toEither.run(start).run._2
@@ -28,28 +28,30 @@ package object monad {
 
   def nextEvent:SchedulerM[D.SchedulerEvents] = for {
     state <- get
-    event = state.channel.read
+    event <- pure ( state.channel.read )
   } yield(event)
 
-  def registered:SchedulerM[_] = for {
+  def registered:SchedulerM[Unit] = for {
     D.Registered(_,_) <- nextEvent
   } yield(())
 
-  def disconnected:SchedulerM[_] = for {
+  def disconnected:SchedulerM[Unit] = for {
     D.Disconnected() <- nextEvent
   } yield(())
 
-  def addOffers:SchedulerM[_] = for {
+  def addOffers:SchedulerM[Unit] = for {
     D.ResourceOffer(offers) <- nextEvent
 		state <- get
 		_ <- put(state.copy(offers = state.offers ++ offers))
 	} yield(())
 
-  def removeOffers:SchedulerM[_] = for {
+  def removeOffers:SchedulerM[Unit] = for {
     D.OfferRescinded(id) <- nextEvent
 		state <- get
 		_ <- put(state.copy(offers = state.offers.filter({ o => o.getId != id })))
 	} yield(())
+
+  def updateOffers:SchedulerM[Unit] = addOffers orElse removeOffers
 
 	implicit class TaskInfoOfferSatisfy(val t: P.TaskInfo) extends AnyVal {
 		def satisfy(offers:List[P.Offer]): List[P.Offer] = offers.filter({ o =>
@@ -65,8 +67,8 @@ package object monad {
 			t.getResourcesList().map(satisfyResource).foldLeft(true)(_ && _)
 		})
 	}
-
 	def launch(t:P.TaskInfo):SchedulerM[P.TaskInfo] = for {
+    _ <- pure( println("launch") )
 		state <- get
 		offer :: _ <- pure( t.satisfy(state.offers) )
 		task = t.toBuilder.setSlaveId(offer.getSlaveId).build()
@@ -103,6 +105,12 @@ package object monad {
     if s.getState == P.TaskState.TASK_RUNNING 
   } yield(())
 
-
+  def retry[A](n:Int, s:SchedulerM[A]):SchedulerM[A] = {
+    if(n < 0) {
+      bail("retry failed")
+    } else {
+      s orElse retry(n - 1, s)
+    }
+  }
 
 }

@@ -57,6 +57,7 @@ object SchedulerMTest {
           .setExecutor(executor)
           .setName(name)
           .setTaskId(id)
+          .setSlaveId(P.SlaveID.newBuilder.setValue("hello world").build())
           .setData(com.google.protobuf.ByteString.copyFrom(cmd.getBytes))
           .addResources(cpuR)
           .addResources(memR)
@@ -68,16 +69,27 @@ object SchedulerMTest {
     }
 
     def command(s:P.TaskInfo):E.SchedulerM[String] = for {
+      _ <- E.pure( println("command") )
       t <- E.launch(s)
       _ <- E.isRunning(t)
       r <- E.recvTaskMsg(t) 
     } yield(new String(r))
 
+    def addOfferAndBail[A]:E.SchedulerM[A] = for {
+      _ <- E.addOffers
+      v <- E.bail[A]("addOfferAndBail")
+    } yield(v)
+
+    val programs:E.SchedulerM[String]  = {
+      command(newTask(10, 2048, "echo 1; uname -a")) orElse command(newTask(1, 128, "echo 2; uname -a"))
+    }
+
     val script:E.SchedulerM[String] = for {
-      s <- command(newTask(10, 2048, "echo 1; uname -a")) orElse command(newTask(1, 128, "echo 2; uname -a"))
+      s <- E.retry(10, programs orElse addOfferAndBail)
       _ <- E.shutdown
     } yield(s)
 
+    println("starting")
     val s = script.run(D.SchedulerState(driver, channel, List()))
     println(s)
     sys.exit(0)

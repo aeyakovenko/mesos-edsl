@@ -9,4 +9,4 @@ libraryDependencies += "org.scalacheck" %% "scalacheck" % "1.13.0" % "test"
 libraryDependencies += "org.typelevel" %% "cats" % "0.6.0"
 libraryDependencies += "org.apache.mesos" % "mesos" % "0.28.1"
 
-coverageEnabled := true
+coverageEnabled in Test := true
