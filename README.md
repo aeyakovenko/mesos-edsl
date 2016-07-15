@@ -58,7 +58,7 @@ def command(s:P.TaskInfo):E.SchedulerM[String] = for {
 } yield(new String(r))
 
 val programs:E.SchedulerM[String]  = {
-  command(newTask(10, 2048, "uname -a")) orElse command(newTask(1, 128, "uname -a"))
+  command(newTask(cpu = 10, mem = 2048, "uname -a")) orElse command(newTask(cpu = 1, mem = 128, "uname -a"))
 }
 
 val script:E.SchedulerM[String] = for {

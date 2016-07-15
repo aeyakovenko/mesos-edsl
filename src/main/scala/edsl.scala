@@ -13,7 +13,7 @@ package object monad {
    * type alias for the monad stack that represents the stateful scheduler
    */
   type SchedulerM[A] = C.ErrorTStateT[Trampoline, D.SchedulerState, A]
-	/**
+  /**
    * error with a message
    * @param msg the error message
    */
@@ -42,21 +42,21 @@ package object monad {
   def logln(msg: String):SchedulerM[Unit] = pure(())
   //_ <- pure( println("launched!") )
 
-	implicit class SchedulerMRun[A](val v: SchedulerM[A]) extends AnyVal {
+  implicit class SchedulerMRun[A](val v: SchedulerM[A]) extends AnyVal {
     /**
      * run method
      */
     //todo: Comonid shoudl be the correct typeclass to upack the value out of the monad
-		def run(start: D.SchedulerState): Either[String,A] = v.toEither.run(start).run._2
-	}
+    def run(start: D.SchedulerState): Either[String,A] = v.toEither.run(start).run._2
+  }
 
-	//todo: generalize this
-	implicit class SchedulerMFilter[A](val xort: SchedulerM[A]) extends AnyVal {
+  //todo: generalize this
+  implicit class SchedulerMFilter[A](val xort: SchedulerM[A]) extends AnyVal {
     /**
      * filter method for the monad container, this is used by the `for` expression sugar
      */
-		def filter(f: A => Boolean): SchedulerM[A] = xort.flatMap(a => if (f(a)) pure(a) else bail(s"SchedulerM[A] filter failed at $a"))
-	}
+    def filter(f: A => Boolean): SchedulerM[A] = xort.flatMap(a => if (f(a)) pure(a) else bail(s"SchedulerM[A] filter failed at $a"))
+  }
   /**
    * optional combinator
    * @return the computation in a Some if it succeeds and None if it fails
@@ -84,7 +84,7 @@ package object monad {
   def readEvent:SchedulerM[D.SchedulerEvents] = for {
     state <- get
     event <- pure ( state.channel.read )
-		_ <- put(state.copy(lookahead = Some(event)) )
+    _ <- put(state.copy(lookahead = Some(event)) )
   } yield(event)
 
   /**
@@ -105,8 +105,8 @@ package object monad {
    * @return the next event
    */
   def nextTaskEvent:SchedulerM[D.SchedulerEvents] = for { 
-      _ <- many(updateOffers)
-      e <- nextEvent
+    _ <- many(updateOffers)
+    e <- nextEvent
   } yield(e)
 
   /**
@@ -114,7 +114,7 @@ package object monad {
    */
   def consumeEvent:SchedulerM[Unit] = for {
     state <- get
-		_ <- put(state.copy(lookahead = None))
+    _ <- put(state.copy(lookahead = None))
   } yield(())
 
   /**
@@ -139,9 +139,9 @@ package object monad {
   def offerAdded:SchedulerM[Unit] = for {
     D.ResourceOffer(offers) <- nextEvent
     _ <- consumeEvent
-		state <- get
-		_ <- put(state.copy(offers = state.offers ++ offers))
-	} yield(())
+    state <- get
+    _ <- put(state.copy(offers = state.offers ++ offers))
+  } yield(())
 
   /**
    * consumes the OfferRescinded event and updates the current state of offer list
@@ -150,15 +150,15 @@ package object monad {
     D.OfferRescinded(id) <- nextEvent
     _ <- consumeEvent
     _ <- removeOffer(id)
-	} yield(())
+  } yield(())
 
   /**
    * removes the offer
    * @param id the offer id
    */
   def removeOffer(id:P.OfferID):SchedulerM[Unit] = for {
-		state <- get
-		_ <- put(state.copy(offers = state.offers.filter({ o => o.getId != id })))
+    state <- get
+    _ <- put(state.copy(offers = state.offers.filter({ o => o.getId != id })))
   } yield(())
 
   /**
@@ -171,48 +171,48 @@ package object monad {
    * @param t the TaskInfo structure to check
    * @param offers the offer list to check against
    */
-	implicit class TaskInfoOfferSatisfy(val t: P.TaskInfo) extends AnyVal {
-		def satisfy(offers:List[P.Offer]): List[P.Offer] = offers.filter({ o =>
-			def satisfyResource(r:P.Resource):Boolean = { o.getResourcesList().map({ x =>
-					x match {
-						case x if x.getName != r.getName => false
-						case x if x.getType != r.getType => false
-						case x if x.getType == P.Value.Type.SCALAR && x.getScalar.getValue < r.getScalar.getValue => false
-						case _ => true
-					}
-				}).foldLeft(false)(_ || _)
-		  }
-			t.getResourcesList().map(satisfyResource).foldLeft(true)(_ && _)
-		})
-	}
+  implicit class TaskInfoOfferSatisfy(val t: P.TaskInfo) extends AnyVal {
+    def satisfy(offers:List[P.Offer]): List[P.Offer] = offers.filter({ o =>
+      def satisfyResource(r:P.Resource):Boolean = { o.getResourcesList().map({ x =>
+        x match {
+          case x if x.getName != r.getName => false
+          case x if x.getType != r.getType => false
+          case x if x.getType == P.Value.Type.SCALAR && x.getScalar.getValue < r.getScalar.getValue => false
+          case _ => true
+        }
+      }).foldLeft(false)(_ || _)
+      }
+      t.getResourcesList().map(satisfyResource).foldLeft(true)(_ && _)
+    })
+  }
 
   /**
    * launch the task
    * @param t the task to launch
    * @returns the task with the updated SlaveID where it was launched
    */
-	def launch(t:P.TaskInfo):SchedulerM[P.TaskInfo] = for {
-		state <- get
+  def launch(t:P.TaskInfo):SchedulerM[P.TaskInfo] = for {
+    state <- get
     //lifts the 'head on empty list' error into the scheduler monad
-		offer :: _ <- pure( t.satisfy(state.offers) )
-		task = t.toBuilder.setSlaveId(offer.getSlaveId).build()
+    offer :: _ <- pure( t.satisfy(state.offers) )
+    task = t.toBuilder.setSlaveId(offer.getSlaveId).build()
     _ <- pure( state.driver.launchTasks(List(offer.getId), List(task)) )
     _ <- removeOffer(offer.getId)
     _ <- logln("launched!")
-	} yield(task)
+  } yield(task)
 
   /**
    * stop the driver
    */
-	def stop():SchedulerM[_] = for {
-		state <- get
-		_ <- pure ( state.driver.stop() )
-	} yield(())
+  def stop():SchedulerM[_] = for {
+    state <- get
+    _ <- pure ( state.driver.stop() )
+  } yield(())
 
   /**
    * shutdown the driver and disconnect
    */
-	def shutdown():SchedulerM[_] = for {
+  def shutdown():SchedulerM[_] = for {
     _ <- stop()
     //_ <- disconnected todo: shoudl we see this event on stop?
   } yield(())
@@ -225,7 +225,7 @@ package object monad {
   def recvTaskMsg(t:P.TaskInfo):SchedulerM[Array[Byte]] = for {
     D.FrameworkMessage(eid, sid, data) <- nextTaskEvent
     if(eid == t.getExecutor.getExecutorId && sid == t.getSlaveId)
-    _ <- consumeEvent
+      _ <- consumeEvent
   } yield(data)
 
   /**
@@ -242,8 +242,8 @@ package object monad {
    * consume the TASK_RUNNING status update
    */
   def isRunning(t:P.TaskInfo):SchedulerM[_] = for {
-		D.StatusUpdate(s) <- nextTaskEvent
-		if s.getTaskId == t.getTaskId
+    D.StatusUpdate(s) <- nextTaskEvent
+    if s.getTaskId == t.getTaskId
     if s.getState == P.TaskState.TASK_RUNNING 
     _ <- consumeEvent
     _ <- logln("task isRunning!")
@@ -253,8 +253,8 @@ package object monad {
    * consume the TASK_FINISHED status update
    */
   def isFinished(t:P.TaskInfo):SchedulerM[_] = for {
-		D.StatusUpdate(s) <- nextTaskEvent
-		if s.getTaskId == t.getTaskId
+    D.StatusUpdate(s) <- nextTaskEvent
+    if s.getTaskId == t.getTaskId
     if s.getState == P.TaskState.TASK_FINISHED 
     _ <- consumeEvent
     _ <- logln("task isFinished!")
