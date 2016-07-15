@@ -77,7 +77,19 @@ val script:E.SchedulerM[String] = for {
 val s = script.run(D.SchedulerState(driver, channel, List(), None))
 println(s)
 ```
-
+Running
+--------
+* Install the vagrant environment [here](https://github.com/dcos/dcos-vagrant)
+  * Use the 1.7 dcos configuration
+  * Deploy with ` vagrant up m1 a1 p1 boot`
+  * The `dcos-vagrant` cloned directory will be mounted on all the machines at `/vagrant`
+* Clone this repository
+* Create a jar of the project with `sbt assembly`
+  * The jar will be created in `target/scala-2.11/mesos-edsl-assembly-1.0.jar`
+* Move the jar to the `dcos-vagrant` directory
+* ssh into m1 with `vagrant ssh m1`
+* Run the scheduler `java -cp mesos-edsl-assembly-1.0.jar org.apache.mesos.edsl.SchedulerMTest`
+* expecting output `Right(Linux a1.dcos 3.10.0-327.18.2.el7.x86_64 #1 SMP Thu May 12 11:03:55 UTC 2016 x86_64 x86_64 x86_64 GNU/Linux)`
 TODO
 ----
 
