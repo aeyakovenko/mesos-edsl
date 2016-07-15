@@ -1,4 +1,4 @@
-package org.apache.mesos.executor
+package org.apache.mesos.edsl.executor
 
 import scala.concurrent.Future
 import scala.concurrent.ExecutionContext.Implicits.global

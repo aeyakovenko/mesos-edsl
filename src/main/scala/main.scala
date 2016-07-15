@@ -9,6 +9,7 @@ import scala.concurrent.{Channel}
 
 import scala.concurrent.Future
 import scala.concurrent.ExecutionContext.Implicits.global
+import org.apache.mesos.edsl.executor.CommandExecutor
 
 
 object SchedulerMTest {
@@ -21,7 +22,7 @@ object SchedulerMTest {
     val id = P.FrameworkID.newBuilder.setValue(name).build()
 
     val executorCommand = P.CommandInfo.newBuilder
-      .setValue("/opt/mesosphere/bin/java -cp /opt/mesosphere/bin/mesos-edsl-assembly-1.0.jar CommandExecutor")
+      .setValue("/opt/mesosphere/bin/java -cp /vagrant/mesos-edsl-assembly-1.0.jar org.apache.mesos.edsl.executor.CommandExecutor")
       .build()
     val executorId = P.ExecutorID.newBuilder.setValue("CommandExecutor-" + System.currentTimeMillis())
     val executorName = "CommandExecutor Executor"
@@ -74,11 +75,6 @@ object SchedulerMTest {
       r <- E.recvTaskMsg(t) 
     } yield(new String(r))
 
-    def updatefferAndBail[A]:E.SchedulerM[A] = for {
-      _ <- E.updateOffers
-      v <- E.bail[A]("addOfferAndBail")
-    } yield(v)
-
     val programs:E.SchedulerM[String]  = {
       command(newTask(10, 2048, "echo 1; uname -a")) orElse command(newTask(1, 128, "echo 2; uname -a"))
     }
@@ -86,7 +82,10 @@ object SchedulerMTest {
     val script:E.SchedulerM[String] = for {
       _ <- E.registered
       _ <- E.pure( println("registered!") )
-      s <- E.retry(10, programs orElse updatefferAndBail)
+      _ <- E.updateOffers
+      _ <- E.pure( println("gotOffers!") )
+      s <- programs
+      _ <- E.pure( println("ran program!") )
       _ <- E.shutdown
     } yield(s)
 

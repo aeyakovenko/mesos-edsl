@@ -7,6 +7,8 @@ import org.apache.mesos.edsl.{control => C}
 import cats.free.{Trampoline}
 import cats.implicits.function0Instance //Comonad[Function0]
 import scala.collection.JavaConversions._
+import cats._
+import cats.implicits._
 
 package object monad {
   type SchedulerM[A] = C.ErrorTStateT[Trampoline, D.SchedulerState, A]
@@ -25,6 +27,15 @@ package object monad {
 	implicit class SchedulerMFilter[A](val xort: SchedulerM[A]) extends AnyVal {
 		def filter(f: A => Boolean): SchedulerM[A] = xort.flatMap(a => if (f(a)) pure(a) else bail(s"SchedulerM[A] filter failed at $a"))
 	}
+  //combinators
+  def retry[A](n:Int, s:SchedulerM[A]):SchedulerM[A] = {
+    if(n < 0) {
+      bail("retry failed")
+    } else {
+      s orElse retry(n - 1, s)
+    }
+  }
+  def optional[A](s:SchedulerM[A]):SchedulerM[Option[A]] = s.map(Some[A]) orElse pure(None)
 
   def readEvent:SchedulerM[D.SchedulerEvents] = for {
     state <- get
@@ -38,6 +49,11 @@ package object monad {
   } yield(event)
 
   def nextEvent:SchedulerM[D.SchedulerEvents] = peekEvent orElse readEvent
+
+  def nextTaskEvent:SchedulerM[D.SchedulerEvents] = for { 
+      _ <- optional(updateOffers)
+      e <- nextEvent
+  } yield(e)
 
   def consumeEvent:SchedulerM[Unit] = for {
     state <- get
@@ -72,6 +88,11 @@ package object monad {
 		_ <- put(state.copy(offers = state.offers.filter({ o => o.getId != id })))
   } yield(())
 
+  def consumeAndBail[A]:SchedulerM[A] = for {
+    _ <- consumeEvent 
+    a <- bail[A]("consumeAndBail")
+  } yield(a)
+
   def updateOffers:SchedulerM[Unit] = offerAdded orElse offerRescinded
 
 	implicit class TaskInfoOfferSatisfy(val t: P.TaskInfo) extends AnyVal {
@@ -90,18 +111,18 @@ package object monad {
 	}
 	def launch(t:P.TaskInfo):SchedulerM[P.TaskInfo] = for {
 		state <- get
-    _ <- pure( println("launch") )
 		offer :: _ <- pure( t.satisfy(state.offers) )
 		task = t.toBuilder.setSlaveId(offer.getSlaveId).build()
     _ <- pure( state.driver.launchTasks(List(offer.getId), List(task)) )
     _ <- removeOffer(offer.getId)
+    _ <- pure( println("launched!") )
 	} yield(task)
 
 	def taskStatus(t: P.TaskInfo):SchedulerM[P.TaskStatus] = for {
-    _ <- pure( println("taskStatus") )
-		D.StatusUpdate(status) <- nextEvent
+		D.StatusUpdate(status) <- nextTaskEvent
 		if status.getTaskId == t.getTaskId
     _ <- consumeEvent
+    _ <- pure( println("got taskStatus!") )
 	} yield(status)
 
 	def stop():SchedulerM[_] = for {
@@ -115,7 +136,7 @@ package object monad {
   } yield(())
 
   def recvTaskMsg(t:P.TaskInfo):SchedulerM[Array[Byte]] = for {
-    D.FrameworkMessage(eid, sid, data) <- nextEvent
+    D.FrameworkMessage(eid, sid, data) <- nextTaskEvent
     if(eid == t.getExecutor.getExecutorId && sid == t.getSlaveId)
     _ <- consumeEvent
   } yield(data)
@@ -126,17 +147,10 @@ package object monad {
   } yield(())
 
   def isRunning(t:P.TaskInfo):SchedulerM[_] = for {
-    _ <- pure( println("isRunning") )
     s <- taskStatus(t)
     if s.getState == P.TaskState.TASK_RUNNING 
+    _ <- pure( println("task isRunning! ") )
   } yield(())
 
-  def retry[A](n:Int, s:SchedulerM[A]):SchedulerM[A] = {
-    if(n < 0) {
-      bail("retry failed")
-    } else {
-      s orElse retry(n - 1, s)
-    }
-  }
 
 }
