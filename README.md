@@ -1,107 +1,84 @@
-mesos combinators
-=================
+mesos edsl
+==========
 
-wrap the scheduler/executor classes into combinators that can be composed 
+A tiny Embedded Domain Specific Language for dealing with Mesos frameworks
 
-ideas
-=====
-
-scheduling tasks
-----------------
-
-```scala
-
-//example script for launching some commands
-for {
-  List(s1,s2) <- for {
-      a:Scheduler[StatusCode] = for {
-        status <- task(cmd("exit 1"))
-        assert(status == 1)
-        List(s1,s2) <- cmd("exit 1") || cmd("exit 2")
-        assert(s1 == 1 && s2 == 2)
-      }
-      b:Scheduler[StatusCode] = for {
-        s4 <- cmd("exit 4")
-        assert(s4 == 4)
-      }
-      a <||> b
-    }
-  List(s1,s2)
-} . run
-
-//interface
-
-//monad for the scheduler/driver
-class Scheduler[T:<Task] extends Monad[Scheduler[T]] {
-  //one task
-  case class Task[T](task: T, rs: List[Resource] = Nil)
-
-  //many tasks to be launched at once
-  case class Parallel(tasks: List[Scheduler[T]])
-
-  //a sequence of tasks
-  case class Sequence(tasks: List[Scheduler[T]])
-
-  //runs the monad, tells mesos to start executing tasks
-  //returns a Try with the result
-  def run():Try[T]
-}
-
-object Scheduler {
-  //parallel builder, launch the tasks in parallel 
-  def <||> (a: Scheduler[T], b: Scheduler[T]): Scheduler[T]
-  def task(task:T): Scheduler[T]
-
-  //sequential builder
-  def flatMap(builder:Scheduler[Scheduler[T]]):Scheduler[T]
-
-  def cpu(cores:Int):Scheduler[Resource[T]]
-  def memory(bytes:Int):Scheduler[Resource[T]]
-  def when(seconds:Int):Scheduler[Resource[T]]
-}
-
-//todo: is there a newtype/unboxxed tagged type?
-class StatusCode(value: Int) extends AnyVal
-
-//one task
-class Task[R] {
-  def execute():R
-}
-
-class Command(cmd:String) extends Task {
-  //implements the system call to cmd, sends the result back as a framework message
-}
-object Command {
-  def cmd(cmd: String):Scheduler[System] = Command(cmd)
-}
-```
-
-free monad
+SchedulerM
 ----------
 
-* https://github.com/typelevel/cats/blob/d14fc0aad45acbf86cf1b87824d0c55390b91e53/docs/src/main/tut/freemonad.md
+SchedulerM is a monad for handling the scheduler state.  It's a combination of `XorT[(StateT[F, S, ?], String, A]`.
+* XorT is used to handle error conditions and fall back to alternatives
+* StateT is used for keeping track of the scheduler state
 
-filtering for resource constraints
-----------------------------------
+The operations on the state are greedy.  Like a greedy parser, any changes to the state cannot be backtracked. This is a requirement because the operations dealing with mesos cannot be backtracked, so the combinator's should succeed on their entire operation if the consume a single event, or fail the operation.
+
+combinators
+-----------
+These combinators are used to compose user defined computations
+
 ```scala
-val a:Scheduler[Command] = for {
-  (cpu(2) <&&> memory(100) <&&> when(10)) <|> (cpu(1) <&&> memory(50)) withResource cmd("exit 5")
-}
+  /**
+   * optional combinator
+   * @return the computation in a Some if it succeeds and None if it fails
+   */
+  def optional[A](s:SchedulerM[A]):SchedulerM[Option[A]] = s.map(Some[A]) orElse pure(None)
+
+  /**
+   * many1 combinator
+   * @return 1 or more results of the computation
+   */
+  def many1[A](s:SchedulerM[A]):SchedulerM[List[A]] = for {
+    a <- s
+    rest <- many1(s) orElse pure(List[A]())
+  } yield(a :: rest)
+
+  /**
+   * many combinator
+   * @return 0 or more results of the compuation 
+   */
+  def many[A](s:SchedulerM[A]):SchedulerM[List[A]] = many1(s) orElse pure(List[A]())
 ```
 
-* cpu memory and when combinators allow the user to wait for a specific resource until its available then execute it
+A simple set of combinators is used to build up the higher level Mesos specific operations
 
-kind project plugin
---------------------
-removes the type lambdas and replaces them with a '?'
-* addCompilerPlugin("org.spire-math" %% "kind-projector" % "0.8.0")
+Scripting Mesos
+---------------
 
-trans lift test
-----------------
+Using scala's `for` expressions is an easy way to chain the scheduler events together.
 
-* addCompilerPlugin("org.spire-math" %% "kind-projector" % "0.8.0")
+```scala
+import org.apache.mesos.edsl.{monad => E}
+import org.apache.mesos.{Protos => P}
+//script
+def command(s:P.TaskInfo):E.SchedulerM[String] = for {
+  t <- E.launch(s)
+  _ <- E.isRunning(t)
+  r <- E.recvTaskMsg(t)  //gets the output from our command executor
+  _ <- E.isFinished(t)
+} yield(new String(r))
 
-sources
--------
-* git clone https://github.com/larioj/SleepFramework
-* wget http://www.apache.org/dist/mesos/0.28.2/mesos-0.28.2.tar.gz
+val programs:E.SchedulerM[String]  = {
+  command(newTask(10, 2048, "uname -a")) orElse command(newTask(1, 128, "uname -a"))
+}
+
+val script:E.SchedulerM[String] = for {
+  _ <- E.logln("starting...")
+  _ <- E.registered
+  _ <- E.logln("registered!")
+  _ <- E.updateOffers
+  _ <- E.logln("gotOffers!")
+  s <- programs
+  _ <- E.logln("ran program!")
+  _ <- E.logln(s"program, output: $s")
+  _ <- E.shutdown
+} yield(s)
+
+//run the script
+val s = script.run(D.SchedulerState(driver, channel, List(), None))
+println(s)
+```
+
+References
+-----------
+* simple example of a mesos framework <https://github.com/larioj/SleepFramework>
+* mesos apis <http://www.apache.org/dist/mesos/0.28.2/mesos-0.28.2.tar.gz>
