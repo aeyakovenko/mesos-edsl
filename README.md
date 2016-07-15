@@ -90,6 +90,7 @@ Running
 * ssh into m1 with `vagrant ssh m1`
 * Run the scheduler `java -cp mesos-edsl-assembly-1.0.jar org.apache.mesos.edsl.SchedulerMTest`
 * expecting output `Right(Linux a1.dcos 3.10.0-327.18.2.el7.x86_64 #1 SMP Thu May 12 11:03:55 UTC 2016 x86_64 x86_64 x86_64 GNU/Linux)`
+
 TODO
 ----
 
