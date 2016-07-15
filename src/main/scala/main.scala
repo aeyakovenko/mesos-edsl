@@ -69,7 +69,6 @@ object SchedulerMTest {
     }
 
     def command(s:P.TaskInfo):E.SchedulerM[String] = for {
-      _ <- E.pure( println("command") )
       t <- E.launch(s)
       _ <- E.isRunning(t)
       r <- E.recvTaskMsg(t) 
@@ -85,6 +84,8 @@ object SchedulerMTest {
     }
 
     val script:E.SchedulerM[String] = for {
+      _ <- E.registered
+      _ <- E.pure( println("registered!") )
       s <- E.retry(10, programs orElse addOfferAndBail)
       _ <- E.shutdown
     } yield(s)

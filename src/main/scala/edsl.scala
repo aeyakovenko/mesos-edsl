@@ -26,16 +26,18 @@ package object monad {
 		def filter(f: A => Boolean): SchedulerM[A] = xort.flatMap(a => if (f(a)) pure(a) else bail(s"SchedulerM[A] filter failed at $a"))
 	}
 
-  def readEvent:SchedulerM[Option[D.SchedulerEvents]] = for {
+  def readEvent:SchedulerM[D.SchedulerEvents] = for {
     state <- get
     event <- pure ( state.channel.read )
 		_ <- put(state.copy(lookahead = Some(event)) )
-  } yield(Some(event))
-
-  def nextEvent:SchedulerM[D.SchedulerEvents] = for {
-    state <- get
-    Some(event) <- pure(state.lookahead) orElse readEvent
   } yield(event)
+
+  def peekEvent:SchedulerM[D.SchedulerEvents] = for {
+    state <- get
+    Some(event) <- pure(state.lookahead)
+  } yield(event)
+
+  def nextEvent:SchedulerM[D.SchedulerEvents] = peekEvent orElse readEvent
 
   def consumeEvent:SchedulerM[Unit] = for {
     state <- get
@@ -83,14 +85,15 @@ package object monad {
 		})
 	}
 	def launch(t:P.TaskInfo):SchedulerM[P.TaskInfo] = for {
-    _ <- pure( println("launch") )
 		state <- get
+    _ <- pure( println("launch") )
 		offer :: _ <- pure( t.satisfy(state.offers) )
 		task = t.toBuilder.setSlaveId(offer.getSlaveId).build()
     _ <- pure( state.driver.launchTasks(List(offer.getId), List(task)) )
 	} yield(task)
 
 	def taskStatus(t: P.TaskInfo):SchedulerM[P.TaskStatus] = for {
+    _ <- pure( println("taskStatus") )
 		D.StatusUpdate(status) <- nextEvent
 		if status.getTaskId == t.getTaskId
     _ <- consumeEvent
@@ -118,6 +121,7 @@ package object monad {
   } yield(())
 
   def isRunning(t:P.TaskInfo):SchedulerM[_] = for {
+    _ <- pure( println("isRunning") )
     s <- taskStatus(t)
     if s.getState == P.TaskState.TASK_RUNNING 
   } yield(())
