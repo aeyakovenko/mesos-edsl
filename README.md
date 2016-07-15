@@ -1,7 +1,7 @@
 mesos edsl
 ==========
 
-A tiny Embedded Domain Specific Language for dealing with Mesos frameworks
+A tiny bare bones Embedded Domain Specific Language for dealing with the Mesos framework.
 
 SchedulerM
 ----------
@@ -12,7 +12,7 @@ SchedulerM is a monad for handling the scheduler state.  It's a combination of `
 
 The operations on the state are greedy.  Like a greedy parser, any changes to the state cannot be backtracked. This is a requirement because the operations dealing with mesos cannot be backtracked, so the combinator's should succeed on their entire operation if the consume a single event, or fail the operation.
 
-combinators
+Combinators
 -----------
 These combinators are used to compose user defined computations
 
@@ -44,7 +44,7 @@ A simple set of combinators is used to build up the higher level Mesos specific 
 Scripting Mesos
 ---------------
 
-Using scala's `for` expressions is an easy way to chain the scheduler events together.
+Using scala's `for` expressions is an easy way to chain the scheduler events together or handle and recover from errors.
 
 ```scala
 import org.apache.mesos.edsl.{monad => E}
@@ -77,6 +77,15 @@ val script:E.SchedulerM[String] = for {
 val s = script.run(D.SchedulerState(driver, channel, List(), None))
 println(s)
 ```
+
+Future
+------
+
+This EDSL could be a nice basis for a mesos shell.
+
+* Maintain a background tasks lists to enable launching tasks in parallel
+* general purpose executor that runs a user supplied scala api
+* pipe stdout/stdout/stderr or scala objects between tasks
 
 References
 -----------
