@@ -139,7 +139,7 @@ package object monad {
 
 	def shutdown():SchedulerM[_] = for {
     _ <- stop()
-    _ <- disconnected
+    //_ <- disconnected todo: shoudl we see this event on stop?
   } yield(())
 
   def recvTaskMsg(t:P.TaskInfo):SchedulerM[Array[Byte]] = for {

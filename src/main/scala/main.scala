@@ -77,7 +77,7 @@ object SchedulerMTest {
     } yield(new String(r))
 
     val programs:E.SchedulerM[String]  = {
-      command(newTask(10, 2048, "echo 1; uname -a")) orElse command(newTask(1, 128, "echo 2; uname -a"))
+      command(newTask(10, 2048, "uname -a")) orElse command(newTask(1, 128, "uname -a"))
     }
 
     val script:E.SchedulerM[String] = for {
@@ -87,6 +87,7 @@ object SchedulerMTest {
       _ <- E.pure( println("gotOffers!") )
       s <- programs
       _ <- E.pure( println("ran program!") )
+      _ <- E.pure( println(s"program, output: $s") )
       _ <- E.shutdown
     } yield(s)
 
