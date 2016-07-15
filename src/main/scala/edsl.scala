@@ -37,6 +37,13 @@ package object monad {
   }
   def optional[A](s:SchedulerM[A]):SchedulerM[Option[A]] = s.map(Some[A]) orElse pure(None)
 
+  def many1[A](s:SchedulerM[A]):SchedulerM[List[A]] = for {
+    a <- s
+    rest <- many1(s) orElse pure(List[A]())
+  } yield(a :: rest)
+
+  def many[A](s:SchedulerM[A]):SchedulerM[List[A]] = many1(s) orElse pure(List[A]())
+
   def readEvent:SchedulerM[D.SchedulerEvents] = for {
     state <- get
     event <- pure ( state.channel.read )
@@ -51,7 +58,7 @@ package object monad {
   def nextEvent:SchedulerM[D.SchedulerEvents] = peekEvent orElse readEvent
 
   def nextTaskEvent:SchedulerM[D.SchedulerEvents] = for { 
-      _ <- optional(updateOffers)
+      _ <- many(updateOffers)
       e <- nextEvent
   } yield(e)
 

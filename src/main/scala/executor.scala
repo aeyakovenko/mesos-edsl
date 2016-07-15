@@ -6,9 +6,6 @@ import org.apache.{mesos => M}
 import org.apache.mesos.{Protos => P}
 import sys.process._ //for !!
 
-/**
-  * Created by mesosphere on 6/30/16.
-  */
 object CommandExecutor extends M.Executor {
   override def shutdown(driver: M.ExecutorDriver): Unit = {
     println("Shutdown: starting")
@@ -28,12 +25,10 @@ object CommandExecutor extends M.Executor {
 
   override def launchTask(driver: M.ExecutorDriver, task: P.TaskInfo): Unit = {
 
-    print(
-      s"""
-         |launcTask: ${task.getData}
-      """.stripMargin)
+    println(s"launchedTask: ${task.getData}")
+    val thread = new Thread {
+      override def run(): Unit = {
 
-    Future {
         driver.sendStatusUpdate(P.TaskStatus.newBuilder
           .setTaskId(task.getTaskId)
           .setState(P.TaskState.TASK_RUNNING).build())
@@ -47,7 +42,10 @@ object CommandExecutor extends M.Executor {
           .setState(P.TaskState.TASK_FINISHED)
           .build())
 
+      }
     }
+
+    thread.start()
   }
 
   def main(args: Array[String]): Unit = {
