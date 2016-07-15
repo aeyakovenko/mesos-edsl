@@ -54,21 +54,25 @@ package object monad {
     _ <- consumeEvent
   } yield(())
 
-  def addOffers:SchedulerM[Unit] = for {
+  def offerAdded:SchedulerM[Unit] = for {
     D.ResourceOffer(offers) <- nextEvent
     _ <- consumeEvent
 		state <- get
 		_ <- put(state.copy(offers = state.offers ++ offers))
 	} yield(())
 
-  def removeOffers:SchedulerM[Unit] = for {
+  def offerRescinded:SchedulerM[Unit] = for {
     D.OfferRescinded(id) <- nextEvent
     _ <- consumeEvent
-		state <- get
-		_ <- put(state.copy(offers = state.offers.filter({ o => o.getId != id })))
+    _ <- removeOffer(id)
 	} yield(())
 
-  def updateOffers:SchedulerM[Unit] = addOffers orElse removeOffers
+  def removeOffer(id:P.OfferID):SchedulerM[Unit] = for {
+		state <- get
+		_ <- put(state.copy(offers = state.offers.filter({ o => o.getId != id })))
+  } yield(())
+
+  def updateOffers:SchedulerM[Unit] = offerAdded orElse offerRescinded
 
 	implicit class TaskInfoOfferSatisfy(val t: P.TaskInfo) extends AnyVal {
 		def satisfy(offers:List[P.Offer]): List[P.Offer] = offers.filter({ o =>
@@ -90,6 +94,7 @@ package object monad {
 		offer :: _ <- pure( t.satisfy(state.offers) )
 		task = t.toBuilder.setSlaveId(offer.getSlaveId).build()
     _ <- pure( state.driver.launchTasks(List(offer.getId), List(task)) )
+    _ <- removeOffer(offer.getId)
 	} yield(task)
 
 	def taskStatus(t: P.TaskInfo):SchedulerM[P.TaskStatus] = for {

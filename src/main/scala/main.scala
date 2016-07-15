@@ -74,8 +74,8 @@ object SchedulerMTest {
       r <- E.recvTaskMsg(t) 
     } yield(new String(r))
 
-    def addOfferAndBail[A]:E.SchedulerM[A] = for {
-      _ <- E.addOffers
+    def updatefferAndBail[A]:E.SchedulerM[A] = for {
+      _ <- E.updateOffers
       v <- E.bail[A]("addOfferAndBail")
     } yield(v)
 
@@ -86,7 +86,7 @@ object SchedulerMTest {
     val script:E.SchedulerM[String] = for {
       _ <- E.registered
       _ <- E.pure( println("registered!") )
-      s <- E.retry(10, programs orElse addOfferAndBail)
+      s <- E.retry(10, programs orElse updatefferAndBail)
       _ <- E.shutdown
     } yield(s)
 

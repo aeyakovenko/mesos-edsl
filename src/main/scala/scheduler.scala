@@ -38,8 +38,7 @@ class Scheduler(channel: Channel[D.SchedulerEvents]) extends M.Scheduler {
   }
 
   override def statusUpdate(driver: M.SchedulerDriver, status: P.TaskStatus): Unit = {
-    logln("statusUpdate")
-    //logln(s"statusUpdate $status")
+    logln(s"statusUpdate $status")
     channel.write(D.StatusUpdate(status))
   }
 
