@@ -12,12 +12,16 @@ import cats.implicits._
 
 package object monad {
   type SchedulerM[A] = C.ErrorTStateT[Trampoline, D.SchedulerState, A]
-	//todo: any way to auto derive these?
+	//todo: auto derive these apis
   def bail[A](msg:String):SchedulerM[A] = C.bail(msg)
   def pure[A](a:A):SchedulerM[A] = C.pure(a)
   def state[A](f: D.SchedulerState => (D.SchedulerState,A)):SchedulerM[A] = C.state(f)
   def get:SchedulerM[D.SchedulerState] = state({ s => (s,s)})
   def put(s:D.SchedulerState):SchedulerM[Unit] = state({ _ => (s,())})
+
+  //todo: replace this with WriterT/LogT
+  def logln(msg: String):SchedulerM[Unit] = pure(())
+  //_ <- pure( println("launched!") )
 
 	implicit class SchedulerMRun[A](val v: SchedulerM[A]) extends AnyVal {
 		def run(start: D.SchedulerState): Either[String,A] = v.toEither.run(start).run._2
@@ -122,14 +126,14 @@ package object monad {
 		task = t.toBuilder.setSlaveId(offer.getSlaveId).build()
     _ <- pure( state.driver.launchTasks(List(offer.getId), List(task)) )
     _ <- removeOffer(offer.getId)
-    _ <- pure( println("launched!") )
+    _ <- logln("launched!")
 	} yield(task)
 
 	def taskStatus(t: P.TaskInfo):SchedulerM[P.TaskStatus] = for {
 		D.StatusUpdate(status) <- nextTaskEvent
 		if status.getTaskId == t.getTaskId
     _ <- consumeEvent
-    _ <- pure( println("got taskStatus!") )
+    _ <- logln("got taskStatus!")
 	} yield(status)
 
 	def stop():SchedulerM[_] = for {
@@ -156,14 +160,13 @@ package object monad {
   def isRunning(t:P.TaskInfo):SchedulerM[_] = for {
     s <- taskStatus(t)
     if s.getState == P.TaskState.TASK_RUNNING 
-    _ <- pure( println("task isRunning! ") )
+    _ <- logln("task isRunning! ")
   } yield(())
 
   def isFinished(t:P.TaskInfo):SchedulerM[_] = for {
     s <- taskStatus(t)
     if s.getState == P.TaskState.TASK_FINISHED 
-    _ <- pure( println("task isFinished! ") )
+    _ <- logln("task isFinished! ")
   } yield(())
-
 
 }

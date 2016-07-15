@@ -6,7 +6,7 @@ import org.apache.mesos.{Protos => P}
 import scala.concurrent.{Channel}
 
 class Scheduler(channel: Channel[D.SchedulerEvents]) extends M.Scheduler {
-  def logln(msg: String):Unit = println(s"scheduler event: $msg")
+  def logln(msg: String):Unit = () //todo: println(s"scheduler event: $msg")
   override def resourceOffers(driver: M.SchedulerDriver, offers: java.util.List[P.Offer]): Unit = {
     logln("resource offer")
     channel.write(D.ResourceOffer(offers))

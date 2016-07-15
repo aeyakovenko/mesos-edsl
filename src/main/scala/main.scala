@@ -81,17 +81,17 @@ object SchedulerMTest {
     }
 
     val script:E.SchedulerM[String] = for {
+      _ <- E.logln("starting...")
       _ <- E.registered
-      _ <- E.pure( println("registered!") )
+      _ <- E.logln("registered!")
       _ <- E.updateOffers
-      _ <- E.pure( println("gotOffers!") )
+      _ <- E.logln("gotOffers!")
       s <- programs
-      _ <- E.pure( println("ran program!") )
-      _ <- E.pure( println(s"program, output: $s") )
+      _ <- E.logln("ran program!")
+      _ <- E.logln(s"program, output: $s")
       _ <- E.shutdown
     } yield(s)
 
-    println("starting")
     val s = script.run(D.SchedulerState(driver, channel, List(), None))
     println(s)
     sys.exit(0)
