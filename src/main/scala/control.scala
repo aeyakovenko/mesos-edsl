@@ -1,6 +1,6 @@
 package org.apache.mesos.edsl
 
-import cats.{Applicative,Functor,Alternative,Monoid}
+import cats.{Applicative,Functor}
 import cats.data.{XorT,StateT}
 
 package object control {
