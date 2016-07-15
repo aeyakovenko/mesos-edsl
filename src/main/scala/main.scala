@@ -15,6 +15,7 @@ import org.apache.mesos.edsl.executor.CommandExecutor
 object SchedulerMTest {
 
   def main(args: Array[String]): Unit = {
+    //boilerplate for starting mesos
     val name = "SchedulerMTest " + System.currentTimeMillis()
     val user = "" // take the default
     val checkpointing = false
@@ -69,10 +70,11 @@ object SchedulerMTest {
       driver.run()
     }
 
+    //script
     def command(s:P.TaskInfo):E.SchedulerM[String] = for {
       t <- E.launch(s)
       _ <- E.isRunning(t)
-      r <- E.recvTaskMsg(t) 
+      r <- E.recvTaskMsg(t)  //gets the output from our command executor
       _ <- E.isFinished(t)
     } yield(new String(r))
 
@@ -92,6 +94,7 @@ object SchedulerMTest {
       _ <- E.shutdown
     } yield(s)
 
+    //run the script
     val s = script.run(D.SchedulerState(driver, channel, List(), None))
     println(s)
     sys.exit(0)

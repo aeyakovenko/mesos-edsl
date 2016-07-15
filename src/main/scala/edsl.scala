@@ -246,7 +246,7 @@ package object monad {
 		if s.getTaskId == t.getTaskId
     if s.getState == P.TaskState.TASK_RUNNING 
     _ <- consumeEvent
-    _ <- logln("task isRunning! ")
+    _ <- logln("task isRunning!")
   } yield(())
 
   /**
@@ -257,7 +257,7 @@ package object monad {
 		if s.getTaskId == t.getTaskId
     if s.getState == P.TaskState.TASK_FINISHED 
     _ <- consumeEvent
-    _ <- logln("task isFinished! ")
+    _ <- logln("task isFinished!")
   } yield(())
 
 }

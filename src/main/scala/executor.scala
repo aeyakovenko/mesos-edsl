@@ -4,10 +4,12 @@ import scala.concurrent.Future
 import scala.concurrent.ExecutionContext.Implicits.global
 import org.apache.{mesos => M}
 import org.apache.mesos.{Protos => P}
-import sys.process._ //for !!
+import sys.process._ //for !! todo: can you import operators?
 import java.nio.charset.StandardCharsets.UTF_8
 
-
+/**
+ * simple executor implementaion that launches a command as a system call and sends the output as a framework message
+ */
 object CommandExecutor extends M.Executor {
   override def shutdown(driver: M.ExecutorDriver): Unit = {
     println("Shutdown: starting")
@@ -42,7 +44,6 @@ object CommandExecutor extends M.Executor {
           .setTaskId(task.getTaskId)
           .setState(P.TaskState.TASK_FINISHED)
           .build())
-
       }
     }
 
