@@ -38,7 +38,7 @@ class Scheduler(channel: Channel[D.SchedulerEvents]) extends M.Scheduler {
   }
 
   override def statusUpdate(driver: M.SchedulerDriver, status: P.TaskStatus): Unit = {
-    logln(s"statusUpdate $status")
+    logln(s"statusUpdate")
     channel.write(D.StatusUpdate(status))
   }
 
@@ -53,7 +53,7 @@ class Scheduler(channel: Channel[D.SchedulerEvents]) extends M.Scheduler {
   }
 
   override def executorLost(driver: M.SchedulerDriver, executorId: P.ExecutorID, slaveId: P.SlaveID, status: Int): Unit = {
-    logln(s"executorLost: $status")
+    logln(s"executorLost")
     channel.write(D.ExecutorLost(executorId, slaveId, status))
   }
 

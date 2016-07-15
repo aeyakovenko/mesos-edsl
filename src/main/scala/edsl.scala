@@ -159,5 +159,11 @@ package object monad {
     _ <- pure( println("task isRunning! ") )
   } yield(())
 
+  def isFinished(t:P.TaskInfo):SchedulerM[_] = for {
+    s <- taskStatus(t)
+    if s.getState == P.TaskState.TASK_FINISHED 
+    _ <- pure( println("task isFinished! ") )
+  } yield(())
+
 
 }

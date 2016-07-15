@@ -73,6 +73,7 @@ object SchedulerMTest {
       t <- E.launch(s)
       _ <- E.isRunning(t)
       r <- E.recvTaskMsg(t) 
+      _ <- E.isFinished(t)
     } yield(new String(r))
 
     val programs:E.SchedulerM[String]  = {
