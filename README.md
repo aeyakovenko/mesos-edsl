@@ -78,8 +78,8 @@ val s = script.run(D.SchedulerState(driver, channel, List(), None))
 println(s)
 ```
 
-Future
-------
+TODO
+----
 
 This EDSL could be a nice basis for a mesos shell.
 
