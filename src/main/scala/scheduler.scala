@@ -5,8 +5,13 @@ import org.apache.{mesos => M}
 import org.apache.mesos.{Protos => P}
 import scala.concurrent.{Channel}
 
+/**
+ * Scheduler implemenation that passes all the events to the channel
+ * @param channel the channel processed by the SchedulerM monad
+ */
 class Scheduler(channel: Channel[D.SchedulerEvents]) extends M.Scheduler {
-  def logln(msg: String):Unit = () //todo: println(s"scheduler event: $msg")
+  //todo: use a real log api instead of println(s"scheduler event: $msg")
+  def logln(msg: String):Unit = ()
   override def resourceOffers(driver: M.SchedulerDriver, offers: java.util.List[P.Offer]): Unit = {
     logln("resource offer")
     channel.write(D.ResourceOffer(offers))
