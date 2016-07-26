@@ -10,7 +10,9 @@ SchedulerM is a monad for handling the scheduler state.  It's a combination of `
 * XorT is used to handle error conditions and fall back to alternatives
 * StateT is used for keeping track of the scheduler state
 
-The operations on the state are greedy.  Like a greedy parser, any changes to the state cannot be backtracked. This is a requirement because the operations dealing with mesos cannot be backtracked, so the combinator's should succeed on their entire operation if the consume a single event, or fail the operation.
+The operations on the state are greedy.  Like a greedy parser, any changes to the state cannot be backtracked. This is a requirement because the operations dealing with mesos cannot be backtracked, so the combinators should succeed on their entire operation if the consume a single event, or fail the operation.
+
+Internally the implementation works very similarly to a recursive decent parser that uses a blocking channel to read events.  The State keeps track of the last read event until the parser indicates that it's consumed.  So it behaves similarly to a `LR(1)` parser.
 
 Combinators
 -----------
@@ -39,7 +41,7 @@ These combinators are used to compose user defined computations
   def many[A](s:SchedulerM[A]):SchedulerM[List[A]] = many1(s) orElse pure(List[A]())
 ```
 
-A simple set of combinators is used to build up the higher level Mesos specific operations
+A simple set of combinators is used to build up the higher level Mesos specific operations.
 
 Scripting Mesos
 ---------------
@@ -77,6 +79,14 @@ val script:E.SchedulerM[String] = for {
 val s = script.run(D.SchedulerState(driver, channel, List(), None))
 println(s)
 ```
+Adding more awesomeness
+-----------------------
+
+The awesome part of using Monad Transformers is that you can always add more Monads to the stack for some realy advanced features.
+
+* Use the Free Monad to remove the blocking channel read call, and instead feed each event to an object and check if its done.  This would enable the user to create "background" scripts that can consume events until they succeed
+* Another Free Monad could also be used to add live debugging capabilities to the scheduler.
+
 Running
 --------
 * Install the vagrant environment [here](https://github.com/dcos/dcos-vagrant)
@@ -90,15 +100,6 @@ Running
 * ssh into m1 with `vagrant ssh m1`
 * Run the scheduler `java -cp mesos-edsl-assembly-1.0.jar org.apache.mesos.edsl.SchedulerMTest`
 * expecting output `Right(Linux a1.dcos 3.10.0-327.18.2.el7.x86_64 #1 SMP Thu May 12 11:03:55 UTC 2016 x86_64 x86_64 x86_64 GNU/Linux)`
-
-TODO
-----
-
-This EDSL could be a nice basis for a mesos shell.
-
-* Maintain a background tasks lists to enable launching tasks in parallel
-* general purpose executor that runs a user supplied scala api
-* pipe stdout/stdout/stderr or scala objects between tasks
 
 References
 -----------

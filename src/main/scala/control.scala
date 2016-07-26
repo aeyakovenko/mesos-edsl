@@ -2,6 +2,8 @@ package org.apache.mesos.edsl
 
 import cats.{Applicative,Functor}
 import cats.data.{XorT,StateT}
+import cats.free.Free
+import cats.free.Free.liftF
 
 package object control {
   type ErrorTStateT[F[_], S, A] = XorT[({type l[X] = StateT[F, S, X]})#l, String, A]
@@ -22,3 +24,17 @@ package object control {
 }
 
 
+package object world {
+  sealed trait KVStoreA[A]
+  case class Put[T](key: String, value: T) extends KVStoreA[Unit]
+  case class Get[T](key: String) extends KVStoreA[Option[T]]
+  case class Delete(key: String) extends KVStoreA[Unit]
+
+  // Put returns nothing (i.e. Unit).
+  def put[T](key: String, value: T): world.KVStore[Unit] =
+    liftF[KVStoreA, Unit](Put[T](key, value))
+  
+  // Get returns a T value.
+  def get[T](key: String): KVStore[Option[T]] =
+    liftF[KVStoreA, Option[T]](Get[T](key))
+}
